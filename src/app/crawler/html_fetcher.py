@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-import requests
+import httpx
 
 from src.app.crawler.types import HttpResponse
 from src.app.exceptions.errors import (
@@ -23,10 +23,10 @@ MAX_REDIRECT_HOPS = 5
 
 
 class HtmlFetcher:
-    def __init__(self, user_agent: str, timeout_seconds: int, session: requests.Session | None = None):
+    def __init__(self, user_agent: str, timeout_seconds: int, session: httpx.Client | None = None):
         self._user_agent = user_agent
         self._timeout_seconds = timeout_seconds
-        self._session = session or requests.Session()
+        self._session = session or httpx.Client()
 
     def fetch(
         self,
@@ -54,11 +54,11 @@ class HtmlFetcher:
                 url,
                 headers=headers,
                 timeout=self._timeout_seconds,
-                allow_redirects=False,
+                follow_redirects=False,
             )
-        except requests.exceptions.Timeout as exc:
+        except httpx.TimeoutException as exc:
             raise CrawlTimeoutError(f"Timeout while fetching {url}") from exc
-        except requests.exceptions.RequestException as exc:
+        except httpx.RequestError as exc:
             raise NetworkError(f"Network error while fetching {url}: {exc}") from exc
 
         hops = 0
@@ -70,15 +70,15 @@ class HtmlFetcher:
             location = response.headers.get("Location")
             if not location:
                 break
-            current_url = requests.compat.urljoin(current_url, location)
+            current_url = str(httpx.URL(current_url).join(location))
             try:
                 response = self._session.get(
                     current_url, headers=headers, timeout=self._timeout_seconds,
-                    allow_redirects=False,
+                    follow_redirects=False,
                 )
-            except requests.exceptions.Timeout as exc:
+            except httpx.TimeoutException as exc:
                 raise CrawlTimeoutError(f"Timeout while fetching {current_url}") from exc
-            except requests.exceptions.RequestException as exc:
+            except httpx.RequestError as exc:
                 raise NetworkError(f"Network error while fetching {current_url}: {exc}") from exc
 
         status = response.status_code

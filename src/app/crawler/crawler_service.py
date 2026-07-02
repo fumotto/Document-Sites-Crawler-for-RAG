@@ -9,16 +9,14 @@
 from __future__ import annotations
 
 import logging
-import random
+import httpx
+from bs4 import BeautifulSoup
 import time
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from urllib.parse import urljoin, urlsplit
-
-import requests
-from bs4 import BeautifulSoup
 
 from src.app.crawler.diff_checker import DiffChecker, DiffDecision
 from src.app.crawler.html_fetcher import HtmlFetcher
@@ -63,13 +61,13 @@ class CrawlerService:
         page_repo: PageRepository,
         metadata_repo: PageMetadataRepository,
         config: ConfigRecord,
-        session: Optional[requests.Session] = None,
+        session: Optional[httpx.Client] = None,
     ):
         self._manifest_repo = manifest_repo
         self._page_repo = page_repo
         self._metadata_repo = metadata_repo
         self._config = config
-        self._session = session or requests.Session()
+        self._session = session or httpx.Client()
 
         self._robots_parser = RobotsParser(config.user_agent, config.timeout_seconds, self._session)
         self._sitemap_fetcher = SitemapFetcher(config.user_agent, config.timeout_seconds, self._session)
@@ -179,7 +177,10 @@ class CrawlerService:
         try:
             soup = BeautifulSoup(html, "lxml")
             for a_tag in soup.find_all("a", href=True):
-                href = a_tag["href"].strip()
+                href_value = a_tag.get("href")
+                if isinstance(href_value, (list, tuple)):
+                    href_value = href_value[0] if href_value else ""
+                href = str(href_value).strip()
                 if not href or href.startswith("#") or href.startswith("mailto:") or href.startswith("javascript:"):
                     continue
                 links.append(urljoin(base_url, href))

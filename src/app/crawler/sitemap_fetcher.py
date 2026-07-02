@@ -28,10 +28,10 @@ class SitemapEntry:
 
 
 class SitemapFetcher:
-    def __init__(self, user_agent: str, timeout_seconds: int, session: requests.Session | None = None):
+    def __init__(self, user_agent: str, timeout_seconds: int, session: httpx.Client | None = None):
         self._user_agent = user_agent
         self._timeout_seconds = timeout_seconds
-        self._session = session or requests.Session()
+        self._session = session or httpx.Client()
 
     def fetch(self, base_url: str, extra_sitemap_urls: Optional[List[str]] = None) -> List[SitemapEntry]:
         """sitemap.xml（既定パス）＋ robots.txt記載分を統合して取得する。

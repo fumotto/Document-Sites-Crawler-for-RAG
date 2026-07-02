@@ -9,16 +9,16 @@ import urllib.robotparser as robotparser
 from typing import List
 from urllib.parse import urljoin, urlsplit
 
-import requests
+import httpx
 
 from src.app.crawler.types import RobotsInfo
 
 
 class RobotsParser:
-    def __init__(self, user_agent: str, timeout_seconds: int, session: requests.Session | None = None):
+    def __init__(self, user_agent: str, timeout_seconds: int, session: httpx.Client | None = None):
         self._user_agent = user_agent
         self._timeout_seconds = timeout_seconds
-        self._session = session or requests.Session()
+        self._session = session or httpx.Client()
 
     def parse(self, base_url: str) -> tuple:
         """robots.txt を取得し、(RobotParser, List[sitemap_url]) を返す。
@@ -46,7 +46,7 @@ class RobotsParser:
                         sitemap_urls.append(urljoin(base_url, sitemap_url))
             else:
                 parser.parse([])
-        except requests.RequestException:
+        except httpx.RequestException:
             parser.parse([])
 
         return parser, sitemap_urls

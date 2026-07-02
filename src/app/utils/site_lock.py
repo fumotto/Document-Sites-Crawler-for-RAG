@@ -11,6 +11,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
+_LOCK_MODE = 0o644
+
 from src.app.exceptions.errors import LockAcquisitionError
 
 try:
@@ -25,7 +27,8 @@ except ImportError:  # Windows等 fcntl が存在しない環境
 def site_lock(lock_path: Path) -> Iterator[None]:
     """指定パスのロックファイルを排他取得する。処理完了後は必ず解放する。"""
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR)
+    fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, _LOCK_MODE)
+    os.fchmod(fd, _LOCK_MODE)
     try:
         if _HAS_FCNTL:
             try:

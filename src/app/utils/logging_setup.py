@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -34,6 +35,12 @@ def setup_logging(log_level: str, log_format: str, log_file_path: Path) -> None:
     file_handler = RotatingFileHandler(
         str(log_file_path), maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8",
     )
+    if not log_file_path.exists():
+        log_file_path.touch()
+    try:
+        os.chmod(log_file_path, 0o644)
+    except OSError:
+        pass
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
 
