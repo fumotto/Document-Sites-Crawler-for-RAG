@@ -12,12 +12,14 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-_FILE_MODE = 0o644
+
+def _file_mode() -> int:
+    return 0o666 if os.name == "nt" else 0o644
 
 
 def _ensure_readable_file(fd: int) -> None:
     try:
-        os.fchmod(fd, _FILE_MODE)
+        os.fchmod(fd, _file_mode())
     except (AttributeError, NotImplementedError, PermissionError):
         pass
 
@@ -32,7 +34,7 @@ def _atomic_write(path: Path, writer: Any) -> None:
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp_path, path)
-        os.chmod(path, _FILE_MODE)
+        os.chmod(path, _file_mode())
     except BaseException:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)

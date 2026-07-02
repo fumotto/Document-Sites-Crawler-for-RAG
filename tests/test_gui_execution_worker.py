@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from unittest.mock import MagicMock, patch
 
-import requests
+import httpx
 
 from src.app.gui.execution_worker import ExecutionWorker, STATE_FAILED, STATE_IDLE, STATE_RUNNING
 from src.app.gui.js_api import JsApi
@@ -39,7 +39,7 @@ def test_double_start_is_ignored_while_running(monkeypatch, tmp_path):
         resp.text = ""
         return resp
 
-    with patch.object(requests.Session, "get", slow_get):
+    with patch.object(httpx.Client, "get", slow_get):
         worker = ExecutionWorker()
         form = {
             "urls_text": "https://example.com", "mode": "incremental", "word_limit": 450000,
@@ -98,7 +98,7 @@ def test_js_api_already_running_response(monkeypatch, tmp_path):
         "request_delay": 0, "include": "", "exclude": "", "max_pages": 1000,
         "timeout_seconds": 5, "log_level": "INFO",
     }
-    with patch.object(requests.Session, "get", slow_get):
+    with patch.object(httpx.Client, "get", slow_get):
         r1 = api.start_execution(form)
         assert r1["status"] == "started"
         r2 = api.start_execution(form)

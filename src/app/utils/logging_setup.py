@@ -38,7 +38,7 @@ def setup_logging(log_level: str, log_format: str, log_file_path: Path) -> None:
     if not log_file_path.exists():
         log_file_path.touch()
     try:
-        os.chmod(log_file_path, 0o644)
+        os.chmod(log_file_path, 0o666 if os.name == "nt" else 0o644)
     except OSError:
         pass
     file_handler.setFormatter(formatter)
