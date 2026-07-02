@@ -1,0 +1,10 @@
+services:
+  crawler:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - ./cache:/app/cache
+      - ./output:/app/output
+      - ./archives:/app/archives
+      - ./logs:/app/logs
