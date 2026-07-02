@@ -38,9 +38,10 @@ docker compose run crawler https://react.dev --log-level DEBUG
 ## テスト
 
 ```bash
-uvx pip install -r requirements.txt
-uvx pip install -r requirements-dev.txt
-uvx pytest tests/
+uv init
+uv add -r requirements.txt
+uv add install -r requirements-dev.txt
+uv run pytest tests/
 ```
 
 ## ディレクトリ構成
@@ -57,7 +58,6 @@ uvx pytest tests/
 
 ```bash
 uvx pip install -r requirements.txt
-uvx pip install -r requirements-dev.txt
 uvx pip install -r requirements-desktop.txt
 uvx python src/app/gui/desktop_main.py
 ```
