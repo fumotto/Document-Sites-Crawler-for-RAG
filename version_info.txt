@@ -1,8 +1,7 @@
-# PyInstaller Windows バージョンリソース定義（08_デスクトップアプリ化要件定義書.md 15節）。
+# PyInstaller Windows Version Resource Definition
 #
-# CI（.github/workflows/release.yml）が、Gitタグ（vX.Y.Z）から取得した
-# バージョン番号でこのファイルのプレースホルダ（0, 0, 0, 0）を書き換えてから
-# PyInstallerビルドを行う。開発時はプレースホルダのままでビルド可能。
+# CI (.github/workflows/release.yml) replaces placeholders (0, 0, 0, 0)
+# with Git tag (vX.Y.Z) before building.
 
 VSVersionInfo(
   ffi=FixedFileInfo(
