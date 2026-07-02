@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document Sites Crawler for RAG</title>
+<style>
+  :root {
+    --color-primary: #2563eb;
+    --color-primary-dark: #1d4ed8;
+    --color-bg: #f8fafc;
+    --color-surface: #ffffff;
+    --color-border: #e2e8f0;
+    --color-text: #1e293b;
+    --color-text-muted: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "Yu Gothic UI", "Meiryo", sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 64px 24px;
+  }
+  h1 {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  p.lead {
+    color: var(--color-text-muted);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  .download-button {
+    display: inline-block;
+    margin: 24px 0;
+    padding: 14px 32px;
+    background: var(--color-primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .download-button:hover {
+    background: var(--color-primary-dark);
+  }
+  .notice {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 24px 0;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .notice h2 {
+    font-size: 15px;
+    margin-top: 0;
+  }
+  footer {
+    margin-top: 48px;
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+  footer a {
+    color: var(--color-primary);
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Document Sites Crawler for RAG</h1>
+  <p class="lead">
+    Webサイト上のドキュメントを収集・整形し、NotebookLMなどのRAGツールへ
+    アップロードしやすいMarkdownファイル群を生成するWindowsデスクトップアプリです。
+  </p>
+
+  <a class="download-button"
+     href="https://github.com/fumotto/NotebookLM-Document-Crawler/releases/latest/download/DocumentSitesCrawlerForRAGSetup.exe">
+    最新版をダウンロード（Windows用インストーラ）
+  </a>
+
+  <div class="notice">
+    <h2>⚠ 初回実行時の注意（SmartScreen警告について）</h2>
+    <p>
+      本アプリは個人開発のオープンソースツールであり、コード署名証明書を
+      取得していません。そのため、インストーラ実行時にWindows SmartScreenが
+      「WindowsによってPCが保護されました」という警告を表示する場合があります。
+    </p>
+    <p>
+      その場合は、表示された画面で<strong>「詳細情報」</strong>をクリックし、
+      続けて表示される<strong>「実行」</strong>ボタンを押してください。
+    </p>
+    <p>
+      ソースコードは下記GitHubリポジトリで全て公開されています。ご不安な場合は
+      コードの内容をご確認いただけます。
+    </p>
+  </div>
+
+  <footer>
+    <p>
+      ソースコード・リリースノート・不具合報告は
+      <a href="https://github.com/fumotto/NotebookLM-Document-Crawler">GitHubリポジトリ</a>
+      をご覧ください。
+    </p>
+  </footer>
+</main>
+</body>
+</html>

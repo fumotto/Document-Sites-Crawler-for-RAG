@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List
+from pathlib import Path
+from typing import List, Optional
 
 from src.app.archive.archive_service import ArchiveService
 from src.app.crawler.crawler_service import CrawlerService
@@ -18,7 +19,7 @@ from src.app.repository.manifest_repository import ManifestRepository
 from src.app.repository.page_metadata_repository import PageMetadataRepository
 from src.app.repository.page_repository import PageRepository
 from src.app.service.builder_service import BuilderService
-from src.app.utils.directory_bootstrap import build_site_context, ensure_project_directories
+from src.app.utils.directory_bootstrap import PROJECT_ROOT, build_site_context, ensure_project_directories
 from src.app.utils.site_lock import site_lock
 
 logger = logging.getLogger(__name__)
@@ -39,14 +40,25 @@ class Orchestrator:
         self._builder_service = BuilderService()
         self._archive_service = ArchiveService()
 
-    def run(self, config: ConfigRecord) -> JobResult:
-        ensure_project_directories()
+    def run(self, config: ConfigRecord, root: Optional[Path] = None) -> JobResult:
+        """対象サイトを逐次処理する。
+
+        Args:
+            config: 実行時設定
+            root: cache/output/archives/logs のルートディレクトリ。
+                  省略時はカレントディレクトリ（CLI版・Docker版の既定動作、
+                  03_ディレクトリ構成.md 準拠）。GUI版は
+                  08_デスクトップアプリ化要件定義書.md 8節の
+                  `%USERPROFILE%\\DocumentSitesCrawlerForRAG\\` を明示的に渡す。
+        """
+        effective_root = root if root is not None else PROJECT_ROOT
+        ensure_project_directories(effective_root)
 
         target_urls = [config.url] if config.url else config.base_urls
         site_results: List[BuildResultRecord] = []
 
         for base_url in target_urls:
-            site_context = build_site_context(base_url, config)
+            site_context = build_site_context(base_url, config, root=effective_root)
             logger.info("=== Processing site: %s (%s) ===", base_url, site_context.site_identifier)
 
             try:
