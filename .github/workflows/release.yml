@@ -5,8 +5,6 @@ name: Build and Release Windows Installer
 # インストーラのアセット添付まで全自動化する。
 on:
   push:
-    branches:
-      - dev
     tags:
       - "v*.*.*"
   

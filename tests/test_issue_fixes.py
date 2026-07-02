@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from unittest.mock import MagicMock, patch
 
-import requests
+import httpx
 
 
 def test_issue5_tests_dir_not_created(tmp_path):
@@ -25,7 +25,7 @@ def test_issue4_log_level_applied_on_start(monkeypatch, tmp_path):
 
     monkeypatch.setenv("HOME", str(tmp_path))
 
-    def fake_get(self, url, timeout=None, headers=None, allow_redirects=None):
+    def fake_get(self, url, timeout=None, headers=None, follow_redirects=None):
         resp = MagicMock()
         resp.status_code = 404
         resp.headers = {}
@@ -36,7 +36,7 @@ def test_issue4_log_level_applied_on_start(monkeypatch, tmp_path):
 
     logging.getLogger().setLevel(logging.INFO)
 
-    with patch.object(requests.Session, "get", fake_get):
+    with patch.object(httpx.Client, "get", fake_get):
         worker = ExecutionWorker()
         form = {
             "urls_text": "https://example.com", "mode": "incremental", "word_limit": 450000,
@@ -65,7 +65,7 @@ def test_issue6_implicit_include_from_path(tmp_path):
             "<html><head><title>Guides</title></head><body><p>guides content</p></body></html>",
     }
 
-    def fake_get(self, url, timeout=None, headers=None, allow_redirects=None):
+    def fake_get(self, url, timeout=None, headers=None, follow_redirects=None):
         resp = MagicMock()
         if url.endswith("robots.txt"):
             resp.status_code = 200
@@ -98,7 +98,7 @@ def test_issue6_implicit_include_from_path(tmp_path):
     page_repo = PageRepository(tmp_path / "pages")
     meta_repo = PageMetadataRepository(tmp_path / "metadata")
 
-    with patch.object(requests.Session, "get", fake_get):
+    with patch.object(httpx.Client, "get", fake_get):
         service = CrawlerService(manifest_repo, page_repo, meta_repo, config)
         outcome = service.process_site("https://supabase.com/docs/guides")
 
@@ -121,7 +121,7 @@ def test_issue6_explicit_include_still_takes_priority(tmp_path):
             "<html><head><title>Blog</title></head><body><p>blog</p></body></html>",
     }
 
-    def fake_get(self, url, timeout=None, headers=None, allow_redirects=None):
+    def fake_get(self, url, timeout=None, headers=None, follow_redirects=None):
         resp = MagicMock()
         if url.endswith("robots.txt"):
             resp.status_code = 200
@@ -154,7 +154,7 @@ def test_issue6_explicit_include_still_takes_priority(tmp_path):
     page_repo = PageRepository(tmp_path / "pages")
     meta_repo = PageMetadataRepository(tmp_path / "metadata")
 
-    with patch.object(requests.Session, "get", fake_get):
+    with patch.object(httpx.Client, "get", fake_get):
         service = CrawlerService(manifest_repo, page_repo, meta_repo, config)
         outcome = service.process_site("https://supabase.com/docs/guides")
 
