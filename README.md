@@ -1,6 +1,6 @@
-# NotebookLM Document Crawler
+# Document-Sites-Crawler-for-RAG
 
-Webサイト上のドキュメントを収集・整形し、NotebookLMへアップロードしやすいMarkdownファイル群を生成するツールです。
+Webサイト上のドキュメントを収集・整形し、RAG（特にNotebookLM）へアップロードしやすいMarkdownファイル群を生成するツールです。
 
 設計書は `docs/` を参照してください（`02_基本設計書.md` が全体の統合版です）。
 
@@ -15,16 +15,16 @@ cp .env.example .env
 
 ```bash
 # 単一サイト処理
-docker compose run crawler https://react.dev
+docker compose run crawler https://example.com
 
 # manifest保存先を変更して単一サイト処理
-docker compose run crawler https://react.dev --manifest ./manifest-prod.json
+docker compose run crawler https://example.com --manifest ./manifest-prod.json
 
 # 複数サイト処理（.env の BASE_URLS を使用）
 docker compose up
 
 # ログレベルを一時的に変更
-docker compose run crawler https://react.dev --log-level DEBUG
+docker compose run crawler https://example.com --log-level DEBUG
 ```
 
 ## 終了コード
