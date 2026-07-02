@@ -46,3 +46,37 @@ uvx pytest tests/
 ## ディレクトリ構成
 
 `03_ディレクトリ構成.md` を参照してください。
+
+---
+
+## デスクトップアプリ版（Windows）
+
+詳細仕様は `docs/08_デスクトップアプリ化要件定義書.md` を参照してください。
+
+### ローカルでの起動（開発用）
+
+```bash
+uvx pip install -r requirements.txt
+uvx pip install -r requirements-dev.txt
+uvx pip install -r requirements-desktop.txt
+uvx python src/app/gui/desktop_main.py
+```
+
+### インストーラのビルド（Windows環境が必要）
+
+```powershell
+pip install -r requirements.txt -r requirements-desktop.txt pyinstaller
+pyinstaller main.spec
+choco install innosetup -y
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAPP_VERSION="0.0.1" installer.iss
+# Output\DocumentSitesCrawlerForRAGSetup.exe が生成される
+```
+
+### 自動リリース
+
+`git tag vX.Y.Z && git push --tags` を実行すると、GitHub Actions
+（`.github/workflows/release.yml`）が自動的にビルド・GitHub Release作成・
+インストーラの添付までを行います。
+
+配布ページ：`docs/index.html`（GitHub Pages、`docs/`フォルダをPages公開元に設定してください）
+

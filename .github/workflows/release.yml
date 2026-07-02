@@ -1,0 +1,106 @@
+name: Build and Release Windows Installer
+
+# 08_デスクトップアプリ化要件定義書.md 16節（DIST-3）:
+# git tag(vX.Y.Z) の push を起点に、ビルド・テスト・Release作成・
+# インストーラのアセット添付まで全自動化する。
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+# RISK-4対応: リポジトリ設定によっては GITHUB_TOKEN が既定で読み取り専用のため、
+# Release作成に必要な書き込み権限を明示する。
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-desktop.txt
+          pip install pyinstaller pytest
+
+      - name: Run tests
+        run: pytest tests/
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          # PyInstallerのversion_info.txt / Windowsバージョンリソースは
+          # X.Y.Z.W（4つ組の整数）形式を要求するため、末尾に .0 を補う。
+          echo "version_tuple=${VERSION}.0" >> "$GITHUB_OUTPUT"
+
+      - name: Inject version into app_version.py
+        shell: bash
+        run: |
+          sed -i "s/^APP_VERSION = .*/APP_VERSION = \"${{ steps.version.outputs.version }}\"/" \
+            src/app/gui/app_version.py
+          cat src/app/gui/app_version.py
+
+      - name: Inject version into version_info.txt
+        shell: pwsh
+        run: |
+          $parts = "${{ steps.version.outputs.version_tuple }}".Split(".")
+          $tupleStr = "$($parts[0]), $($parts[1]), $($parts[2]), $($parts[3])"
+          (Get-Content version_info.txt) `
+            -replace 'filevers=\(0, 0, 0, 0\)', "filevers=($tupleStr)" `
+            -replace 'prodvers=\(0, 0, 0, 0\)', "prodvers=($tupleStr)" `
+            -replace 'StringStruct\("FileVersion", "0.0.0.0"\)', "StringStruct(`"FileVersion`", `"${{ steps.version.outputs.version }}`")" `
+            -replace 'StringStruct\("ProductVersion", "0.0.0.0"\)', "StringStruct(`"ProductVersion`", `"${{ steps.version.outputs.version }}`")" `
+            | Set-Content version_info.txt
+          Get-Content version_info.txt
+
+      - name: Build EXE with PyInstaller
+        run: pyinstaller main.spec
+
+      # RISK-2対応の実効性はここで初めて確認できる。失敗する場合は
+      # main.spec の hiddenimports/collect_all を見直すこと。
+      - name: Smoke-test the built executable exists
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist\DocumentSitesCrawlerForRAG\DocumentSitesCrawlerForRAG.exe")) {
+            throw "Build output not found."
+          }
+
+      # RISK-3対応: サードパーティ製Actionの保守状況に依存せず、
+      # Chocolatey経由で直接Inno Setupをインストールし ISCC.exe を実行する。
+      - name: Install Inno Setup via Chocolatey
+        run: choco install innosetup --no-progress -y
+
+      - name: Compile Installer with Inno Setup
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            /DAPP_VERSION="${{ steps.version.outputs.version }}" `
+            installer.iss
+
+      - name: Verify installer output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "Output\DocumentSitesCrawlerForRAGSetup.exe")) {
+            throw "Installer output not found."
+          }
+
+      - name: Create GitHub Release and upload asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: Output/DocumentSitesCrawlerForRAGSetup.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

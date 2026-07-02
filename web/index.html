@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Document Sites Crawler for RAG</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1 id="app-title">Document Sites Crawler for RAG</h1>
+    <span id="app-version" class="version-tag"></span>
+  </header>
+
+  <!-- 4.1節: 入力画面 -->
+  <main id="screen-input" class="screen">
+    <section class="field-group">
+      <label for="urls_text">対象URL（複数可、1行1URL）</label>
+      <textarea id="urls_text" rows="4" placeholder="https://example.com/docs&#10;https://example.com/blog"></textarea>
+    </section>
+
+    <section class="field-group">
+      <label>モード</label>
+      <div class="radio-row">
+        <label><input type="radio" name="mode" value="incremental" checked> 差分更新（incremental）</label>
+        <label><input type="radio" name="mode" value="full"> 全件取得（full）</label>
+      </div>
+    </section>
+
+    <details class="advanced-settings">
+      <summary>詳細設定</summary>
+
+      <section class="field-group">
+        <label for="word_limit">WORD_LIMIT（結合ファイル1つあたりの語数上限）</label>
+        <input type="number" id="word_limit" value="450000" min="1000">
+      </section>
+
+      <section class="field-group">
+        <label for="request_delay">REQUEST_DELAY（リクエスト間隔・秒）</label>
+        <input type="number" id="request_delay" value="0.5" min="0" step="0.1">
+      </section>
+
+      <section class="field-group">
+        <label for="include">INCLUDE（取得対象パス、カンマ区切り）</label>
+        <input type="text" id="include" placeholder="/docs,/guides">
+      </section>
+
+      <section class="field-group">
+        <label for="exclude">EXCLUDE（除外対象パス、カンマ区切り）</label>
+        <input type="text" id="exclude" placeholder="/blog,/changelog">
+      </section>
+
+      <section class="field-group">
+        <label for="max_pages">MAX_PAGES（フォールバッククロール時の上限）</label>
+        <input type="number" id="max_pages" value="1000" min="1">
+      </section>
+
+      <section class="field-group">
+        <label for="timeout_seconds">TIMEOUT_SECONDS</label>
+        <input type="number" id="timeout_seconds" value="30" min="1">
+      </section>
+
+      <section class="field-group">
+        <label for="log_level">ログレベル</label>
+        <select id="log_level">
+          <option value="DEBUG">DEBUG</option>
+          <option value="INFO" selected>INFO</option>
+          <option value="WARNING">WARNING</option>
+          <option value="ERROR">ERROR</option>
+        </select>
+      </section>
+    </details>
+
+    <button id="btn-start" class="btn-primary">実行</button>
+    <p id="input-error" class="error-text" hidden></p>
+  </main>
+
+  <!-- 4.1節: 実行中画面 -->
+  <section id="screen-running" class="screen" hidden>
+    <h2>実行中...</h2>
+    <p id="progress-text">サイト処理中: 0 / 0</p>
+    <pre id="log-panel" class="log-panel"></pre>
+  </section>
+
+  <!-- 4.1節: 完了画面 -->
+  <section id="screen-completed" class="screen" hidden>
+    <h2 id="completed-title">完了しました</h2>
+    <div id="result-summary"></div>
+    <pre id="log-panel-completed" class="log-panel"></pre>
+    <button id="btn-restart" class="btn-primary">もう一度実行</button>
+  </section>
+
+  <!-- 4.1節: エラー画面 -->
+  <section id="screen-error" class="screen" hidden>
+    <h2>エラーが発生しました</h2>
+    <p id="error-message" class="error-text"></p>
+    <button id="btn-open-log">ログフォルダを開く</button>
+    <button id="btn-back-from-error" class="btn-primary">戻る</button>
+  </section>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
