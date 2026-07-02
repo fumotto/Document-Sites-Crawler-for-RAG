@@ -5,8 +5,11 @@ name: Build and Release Windows Installer
 # インストーラのアセット添付まで全自動化する。
 on:
   push:
+    branches:
+      - dev
     tags:
       - "v*.*.*"
+  
 
 # RISK-4対応: リポジトリ設定によっては GITHUB_TOKEN が既定で読み取り専用のため、
 # Release作成に必要な書き込み権限を明示する。
@@ -24,7 +27,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
 
       - name: Install Python dependencies
         run: |
