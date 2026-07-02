@@ -82,6 +82,13 @@ class ExecutionWorker:
                 self._state = ExecutionState(state=STATE_FAILED, error_message=str(exc))
                 return
 
+            # Issue #4対応: フォームで選択したログレベルは ConfigRecord に格納されるだけでは
+            # 反映されない。ルートロガーの実行時レベルをここで明示的に更新する。
+            # （CLI版は cli/main.py の setup_logging() 呼び出しで対応済みだが、GUI版は
+            # アプリ起動時に一度 setup_logging("INFO", ...) を呼ぶのみで、以降
+            # 実行ボタンが押されるたびにログレベルを更新する処理が抜けていた）
+            logging.getLogger().setLevel(config.log_level)
+
             target_count = len(config.base_urls) if config.base_urls else 1
             self._state = ExecutionState(state=STATE_RUNNING, sites_total=target_count, sites_done=0)
 
