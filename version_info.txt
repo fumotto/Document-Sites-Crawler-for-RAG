@@ -32,6 +32,6 @@ VSVersionInfo(
         )
       ]
     ),
-    VarFileInfo([VarStruct("Translation", [1041, 1200])]),
+    VarFileInfo([VarStruct("Translation", [(1041, 1200)])]),
   ],
 )
