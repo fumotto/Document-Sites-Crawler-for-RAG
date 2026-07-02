@@ -64,7 +64,7 @@ CLI引数でURLを指定しない場合、`.env` の `BASE_URLS` を読み込み
 | `WORD_LIMIT` | 結合Markdown1ファイルあたりの語数上限 | `450000` | デフォルト適用 |
 | `REQUEST_DELAY` | リクエスト間の待機秒数 | `0.5` | デフォルト適用 |
 | `USER_AGENT` | HTTPアクセス時のUser-Agent | `NotebookLM-Crawler/1.0` | デフォルト適用 |
-| `INCLUDE` | 取得対象パス | なし | デフォルト適用（制限なし） |
+| `INCLUDE` | 取得対象パス | なし | 未設定時は、対象URLのパス部分を暗黙のINCLUDEとして扱う（下記補足参照） |
 | `EXCLUDE` | 除外対象パス | なし | デフォルト適用（制限なし） |
 | `MAX_PAGES` | 同一ドメインクロール時の最大ページ数（ソフトリミット）／sitemap利用時は警告閾値 | `1000` | **ConfigError** |
 | `TIMEOUT_SECONDS` | HTTPタイムアウト秒数 | `30` | **ConfigError** |
@@ -73,6 +73,8 @@ CLI引数でURLを指定しない場合、`.env` の `BASE_URLS` を読み込み
 | `LOG_FILE_PATH` | ログファイル出力先 | `logs/crawler.log` | デフォルト適用 |
 
 > `BASE_URL`（単数）は `.env` では使用しない。単一サイト指定はCLI引数（位置引数 `url`）でのみ行う（要件定義書3節）。
+
+> **`INCLUDE`未設定時の暗黙スコープについて（v1.0.1以降）**：対象URLがドメインルート以外のパスを含む場合（例：`https://example.com/docs/guides`）、`INCLUDE`が明示的に指定されていなければ、そのパス部分（`/docs/guides`）を暗黙のINCLUDEとして自動適用する。これは、sitemap利用時のクロールが常にドメインルートの`sitemap.xml`を読みに行く仕様（06_処理シーケンス.md 3節）であるため、`INCLUDE`未設定のままだと指定パス外（例：`/blog/`）まで取得対象になってしまう不具合の修正として導入した（Issue #6）。`INCLUDE`を明示的に指定した場合は、常にその指定が優先される。
 
 ---
 

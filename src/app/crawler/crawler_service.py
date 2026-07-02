@@ -77,6 +77,13 @@ class CrawlerService:
         self._diff_checker = DiffChecker()
 
     def process_site(self, base_url: str) -> CrawlSiteOutcome:
+        # Issue #6対応: INCLUDE未設定の場合、指定URLのパス部分を暗黙のスコープとして
+        # 適用する。sitemapは常にドメインルートの /sitemap.xml を読みに行くため
+        # （SitemapFetcher参照）、これを行わないと「https://example.com/docs/guides」
+        # のようにパスを含むURLを指定しても、INCLUDE/EXCLUDEで絞り込まない限り
+        # ドメイン全体（/blog/ 等）がクロール対象になってしまう。
+        effective_include = self._resolve_effective_include(base_url)
+
         robots, robots_sitemaps = self._robots_parser.parse(base_url)
         sitemap_entries = self._sitemap_fetcher.fetch(base_url, robots_sitemaps)
 
@@ -96,7 +103,7 @@ class CrawlerService:
 
             for entry in sitemap_entries:
                 normalized = normalize_url(entry.url)
-                if not is_included(normalized, self._config.include, self._config.exclude):
+                if not is_included(normalized, effective_include, self._config.exclude):
                     continue
                 if not RobotsParser.is_allowed(robots, self._config.user_agent, normalized):
                     self._record_and_log(existing_manifest, normalized, CrawlResult.ROBOTS_DENIED)
@@ -110,7 +117,7 @@ class CrawlerService:
                 time.sleep(self._config.request_delay)
         else:
             discovery_complete = self._crawl_fallback(
-                base_url, robots, existing_manifest, discovered_urls, results
+                base_url, robots, existing_manifest, discovered_urls, results, effective_include
             )
 
         fatal_error = len(results) > 0 and all(
@@ -120,15 +127,34 @@ class CrawlerService:
         if not discovered_urls:
             fatal_error = True
 
-        self._apply_deletion_guard(existing_manifest, discovered_urls, discovery_complete)
+        self._apply_deletion_guard(existing_manifest, discovered_urls, discovery_complete, effective_include)
 
         return CrawlSiteOutcome(
             page_results=results, discovery_complete=discovery_complete, fatal_error=fatal_error
         )
 
+    @staticmethod
+    def _resolve_include_from_path(base_url: str) -> List[str]:
+        parsed = urlsplit(base_url)
+        if parsed.path and parsed.path != "/":
+            return [parsed.path]
+        return []
+
+    def _resolve_effective_include(self, base_url: str) -> List[str]:
+        """Issue #6対応: INCLUDE未設定時、base_urlのパス部分を暗黙のINCLUDEとする。
+
+        ユーザーが詳細設定でINCLUDEを明示的に指定している場合は、その指定を
+        常に優先する（既存のCLI利用者の挙動を変えないため）。
+        """
+        if self._config.include:
+            return self._config.include
+        return self._resolve_include_from_path(base_url)
+
     # --- フォールバッククロール（06_処理シーケンス.md 4節） -------------------
 
-    def _crawl_fallback(self, base_url, robots, existing_manifest, discovered_urls, results) -> bool:
+    def _crawl_fallback(
+        self, base_url, robots, existing_manifest, discovered_urls, results, effective_include,
+    ) -> bool:
         base_domain = urlsplit(base_url).netloc
         visited: set = set()
         queue = deque([base_url])
@@ -149,7 +175,7 @@ class CrawlerService:
                 continue
             visited.add(normalized)  # リクエスト開始時点で登録（二重リクエスト防止）
 
-            if not is_included(normalized, self._config.include, self._config.exclude):
+            if not is_included(normalized, effective_include, self._config.exclude):
                 continue
             if not RobotsParser.is_allowed(robots, self._config.user_agent, normalized):
                 self._record_and_log(existing_manifest, normalized, CrawlResult.ROBOTS_DENIED)
@@ -292,11 +318,13 @@ class CrawlerService:
         self._manifest_repo.merge_update(url, record)
 
     def _apply_deletion_guard(
-        self, existing_manifest: Dict[str, ManifestRecord], discovered_urls: set, discovery_complete: bool,
+        self, existing_manifest: Dict[str, ManifestRecord], discovered_urls: set,
+        discovery_complete: bool, effective_include: List[str],
     ) -> None:
         """削除ページ判定（06_処理シーケンス.md 8節）。
 
         探索が網羅的に完了した場合のみ削除判定を実行する。
+        Issue #6対応: 比較範囲も effective_include（暗黙のパススコープ含む）に揃える。
         """
         if not discovery_complete:
             logger.warning("探索が完了していないため削除判定をスキップしました。")
@@ -304,7 +332,7 @@ class CrawlerService:
 
         target = {
             url for url in existing_manifest.keys()
-            if is_included(url, self._config.include, self._config.exclude)
+            if is_included(url, effective_include, self._config.exclude)
         }
         deletion_candidates = target - discovered_urls
         if deletion_candidates:

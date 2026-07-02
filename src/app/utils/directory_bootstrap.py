@@ -12,8 +12,16 @@ PROJECT_ROOT = Path(".")
 
 
 def ensure_project_directories(root: Path = PROJECT_ROOT) -> None:
-    """cache/, output/, archives/, logs/, tests/ を作成する（03節）。"""
-    for name in ("cache", "output", "archives", "logs", "tests"):
+    """cache/, output/, archives/, logs/ を作成する（03節）。
+
+    Issue #5対応: 以前は "tests" も含めて作成していたが、tests/ はソースリポジトリの
+    構成要素（バージョン管理された実際のテストコードを置く場所）であり、実行時に
+    自動生成すべきディレクトリではない。CLI/Docker版ではプロジェクトルート直下に
+    無害な空フォルダが増えるだけだったため気づきにくかったが、GUI版では
+    root が %USERPROFILE%\\DocumentSitesCrawlerForRAG\\ になるため、
+    ユーザーデータフォルダに無関係な tests/ が作られてしまう不具合として顕在化した。
+    """
+    for name in ("cache", "output", "archives", "logs"):
         (root / name).mkdir(parents=True, exist_ok=True)
 
 
