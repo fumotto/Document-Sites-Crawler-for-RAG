@@ -3,12 +3,13 @@ name: CI
 on:
   push:
     branches: ["*"]
-  pull_request:
-    branches: ["*"]
+    tags: ["v*.*.*"]
+#   pull_request:
+#     branches: ["*"]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest , windows-latest]
     strategy:
       matrix:
         python-version: ["3.14"]
@@ -29,13 +30,16 @@ jobs:
 
       - name: Install Playwright browser
         run: |
-          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt playwright install chromium
+          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt playwright install --with-deps chromium
 
       - name: Run unit tests with pytest
         run: |
-          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/unit/ -v
+          uvx pytest tests/unit/ -v
 
       - name: Run integration tests with pytest
         run: |
-          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/integration/docker/ -q
-          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/integration/e2e/ -q
+          uvx pytest tests/integration/docker/ -q
+
+      - name: Run integration tests with e2e
+        run: |
+          uvx pytest tests/integration/e2e/ -q
