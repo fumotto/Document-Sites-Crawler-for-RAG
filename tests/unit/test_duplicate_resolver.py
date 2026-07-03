@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 
 from src.app.builder.duplicate_resolver import DuplicateResolver
 from src.app.models.page_metadata_record import PageMetadataRecord
-import pytest
 
 def _meta(url, sha256, retrieved_at):
     return PageMetadataRecord(
@@ -18,7 +17,7 @@ def _meta(url, sha256, retrieved_at):
 
 # TestID: DR-001
 # TestID: DUP-001
-def test_newest_retrieved_at_wins(self):
+def test_newest_retrieved_at_wins():
     resolver = DuplicateResolver()
     old = datetime(2020, 1, 1, tzinfo=timezone.utc)
     new = datetime(2026, 1, 1, tzinfo=timezone.utc)
