@@ -12,13 +12,13 @@ from src.app.gui.execution_worker import ExecutionWorker, STATE_FAILED, STATE_ID
 from src.app.gui.js_api import JsApi
 from src.app.gui.log_buffer import InMemoryLogHandler
 
-
+# TestID: EW-001
 def test_initial_state_is_idle():
     worker = ExecutionWorker()
     assert worker.get_state_snapshot().state == STATE_IDLE
     assert not worker.is_running
 
-
+# TestID: EW-002
 def test_invalid_form_transitions_to_failed_without_thread(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
     worker = ExecutionWorker()
@@ -27,7 +27,7 @@ def test_invalid_form_transitions_to_failed_without_thread(monkeypatch, tmp_path
     assert state.state == STATE_FAILED
     assert state.error_message
 
-
+# TestID: EW-003
 def test_double_start_is_ignored_while_running(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -56,7 +56,7 @@ def test_double_start_is_ignored_while_running(monkeypatch, tmp_path):
                 break
             time.sleep(0.1)
 
-
+# TestID: JSAPI-001
 def test_js_api_get_status_returns_diff_only():
     handler = InMemoryLogHandler()
     api = JsApi(handler)
@@ -79,7 +79,7 @@ def test_js_api_get_status_returns_diff_only():
     status2 = api.get_status(since_index=status1["last_index"])
     assert status2["log_lines"] == ["line3"]
 
-
+# TestID: JSAPI-002
 def test_js_api_already_running_response(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
 

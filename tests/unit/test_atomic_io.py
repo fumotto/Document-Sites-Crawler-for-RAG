@@ -1,4 +1,5 @@
 import os
+import pytest
 from pathlib import Path
 
 from src.app.utils.atomic_io import atomic_write_json, atomic_write_text
@@ -11,7 +12,8 @@ def assert_readable_and_writable(path: Path) -> None:
     assert os.access(path, os.W_OK)
 
 
-def test_atomic_write_json_creates_readable_file(tmp_path: Path) -> None:
+# TestID: AT-001
+def test_atomic_write_json_creates_readable_file(self, tmp_path: Path) -> None:
     output_path = tmp_path / "data.json"
 
     atomic_write_json(output_path, {"hello": "world"})
@@ -19,15 +21,16 @@ def test_atomic_write_json_creates_readable_file(tmp_path: Path) -> None:
     assert_readable_and_writable(output_path)
 
 
-def test_atomic_write_text_creates_readable_file(tmp_path: Path) -> None:
+# TestID: AT-002
+def test_atomic_write_text_creates_readable_file(self, tmp_path: Path) -> None:
     output_path = tmp_path / "data.txt"
 
     atomic_write_text(output_path, "hello")
 
     assert_readable_and_writable(output_path)
 
-
-def test_site_lock_creates_readable_file(tmp_path: Path) -> None:
+# TestID: LOCK-001
+def test_site_lock_creates_readable_file(self, tmp_path: Path) -> None:
     lock_path = tmp_path / ".lock"
 
     with site_lock(lock_path):
@@ -35,8 +38,8 @@ def test_site_lock_creates_readable_file(tmp_path: Path) -> None:
 
     assert_readable_and_writable(lock_path)
 
-
-def test_setup_logging_creates_readable_file(tmp_path: Path) -> None:
+# TestID: LOG-001
+def test_setup_logging_creates_readable_file(self, tmp_path: Path) -> None:
     log_path = tmp_path / "crawler.log"
 
     setup_logging("INFO", "text", log_path)

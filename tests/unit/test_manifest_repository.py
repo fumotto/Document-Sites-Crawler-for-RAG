@@ -17,14 +17,14 @@ def _rec(crawl_result, etag="e1", content_sha256="sha1"):
         crawl_result=crawl_result,
     )
 
-
+# TestID: MAN-001
 def test_success_full_update(tmp_path):
     repo = ManifestRepository(tmp_path / "manifest.json")
     repo.merge_update("https://example.com/a", _rec(CrawlResult.SUCCESS))
     loaded = repo.load()
     assert loaded["https://example.com/a"].etag == "e1"
 
-
+# TestID: MAN-002
 def test_network_error_preserves_previous_fields(tmp_path):
     repo = ManifestRepository(tmp_path / "manifest.json")
     repo.merge_update("https://example.com/a", _rec(CrawlResult.SUCCESS, etag="original-etag"))
@@ -36,14 +36,14 @@ def test_network_error_preserves_previous_fields(tmp_path):
     assert loaded["https://example.com/a"].etag == "original-etag"
     assert loaded["https://example.com/a"].crawl_result == CrawlResult.NETWORK_ERROR
 
-
+# TestID: MAN-003
 def test_not_modified_does_not_write(tmp_path):
     repo = ManifestRepository(tmp_path / "manifest.json")
     repo.merge_update("https://example.com/a", _rec(CrawlResult.NOT_MODIFIED))
     loaded = repo.load()
     assert "https://example.com/a" not in loaded
 
-
+# TestID: MAN-004
 def test_delete_many(tmp_path):
     repo = ManifestRepository(tmp_path / "manifest.json")
     repo.merge_update("https://example.com/a", _rec(CrawlResult.SUCCESS))

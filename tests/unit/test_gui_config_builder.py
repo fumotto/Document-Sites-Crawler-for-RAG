@@ -25,12 +25,16 @@ def _base_form(**overrides):
     return form
 
 
+# TestID: GCB-001
+# TestID: GUI-002
 def test_single_url_maps_to_url_field():
     config = build_config_from_form(_base_form())
     assert config.url == "https://example.com"
     assert config.base_urls == []
 
 
+# TestID: GUI-003
+# TestID: GCB-002
 def test_multiple_urls_map_to_base_urls():
     form = _base_form(urls_text="https://a.com\nhttps://b.com")
     config = build_config_from_form(form)
@@ -38,21 +42,29 @@ def test_multiple_urls_map_to_base_urls():
     assert config.base_urls == ["https://a.com", "https://b.com"]
 
 
+# TestID: GUI-004
+# TestID: GCB-003
 def test_empty_urls_raises_config_error():
     with pytest.raises(ConfigError):
         build_config_from_form(_base_form(urls_text="   \n  "))
 
 
+# TestID: GUI-005
+# TestID: GCB-004
 def test_invalid_url_scheme_raises_config_error():
     with pytest.raises(ConfigError):
         build_config_from_form(_base_form(urls_text="ftp://example.com"))
 
 
+# TestID: GUI-006
+# TestID: GCB-005
 def test_invalid_mode_raises_config_error():
     with pytest.raises(ConfigError):
         build_config_from_form(_base_form(mode="bogus"))
 
 
+# TestID: GUI-007
+# TestID: GCB-006
 def test_include_exclude_csv_parsing():
     form = _base_form(include="/docs, /guides", exclude="/blog")
     config = build_config_from_form(form)
@@ -60,6 +72,8 @@ def test_include_exclude_csv_parsing():
     assert config.exclude == ["/blog"]
 
 
+# TestID: GUI-008
+# TestID: GCB-007
 def test_manifest_override_always_none_for_gui():
     config = build_config_from_form(_base_form())
     assert config.manifest_path_override is None

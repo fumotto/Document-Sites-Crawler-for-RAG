@@ -8,26 +8,31 @@ import pytest
 from src.app.utils.site_identifier import generate_site_identifier
 
 
-def test_lowercase_and_symbol_replacement():
+# TestID: SID-001
+def test_lowercase_and_symbol_replacement(self):
     assert generate_site_identifier("https://supabase.com/docs/") == "supabase_com_docs"
 
 
-def test_trailing_slash_equivalence():
+# TestID: SID-002
+def test_trailing_slash_equivalence(self):
     a = generate_site_identifier("https://example.com/docs/")
     b = generate_site_identifier("https://example.com/docs")
     assert a == b == "example_com_docs"
 
 
-def test_case_insensitivity():
+# TestID: SID-003
+def test_case_insensitivity(self):
     a = generate_site_identifier("https://Supabase.com/Docs/")
     b = generate_site_identifier("https://supabase.com/docs/")
     assert a == b
 
 
-def test_react_dev_example():
+# TestID: SID-004
+def test_react_dev_example(self):
     assert generate_site_identifier("https://react.dev") == "react_dev"
 
 
-def test_empty_url_raises():
+# TestID: SID-005
+def test_empty_url_raises(self):
     with pytest.raises(ValueError):
         generate_site_identifier("")

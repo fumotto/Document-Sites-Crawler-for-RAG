@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 
-
+# TestID: DIR-001
 def test_issue5_tests_dir_not_created(tmp_path):
     """Issue #5: ensure_project_directories() は tests/ を作成しない。"""
     from src.app.utils.directory_bootstrap import ensure_project_directories
@@ -18,7 +18,7 @@ def test_issue5_tests_dir_not_created(tmp_path):
     assert created == {"cache", "output", "archives", "logs"}
     assert "tests" not in created
 
-
+# TestID: EW-004
 def test_issue4_log_level_applied_on_start(monkeypatch, tmp_path):
     """Issue #4: 実行開始時にフォームのlog_levelがルートロガーへ反映される。"""
     import logging
@@ -51,7 +51,7 @@ def test_issue4_log_level_applied_on_start(monkeypatch, tmp_path):
                 break
             time.sleep(0.1)
 
-
+# TestID: ISS6-001
 def test_issue6_implicit_include_from_path(tmp_path):
     """Issue #6: INCLUDE未設定時、対象URLのパスが暗黙のスコープになる。"""
     from src.app.crawler.crawler_service import CrawlerService
@@ -105,7 +105,7 @@ def test_issue6_implicit_include_from_path(tmp_path):
     crawled_urls = {r.url for r in outcome.page_results}
     assert crawled_urls == {"https://supabase.com/docs/guides"}
 
-
+# TestID: ISS6-002
 def test_issue6_explicit_include_still_takes_priority(tmp_path):
     """Issue #6: INCLUDEが明示指定されている場合はそちらを優先する（CLI互換性維持）。"""
     from src.app.crawler.crawler_service import CrawlerService
