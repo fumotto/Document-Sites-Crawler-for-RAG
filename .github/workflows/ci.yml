@@ -39,7 +39,8 @@ jobs:
 
       - name: Install Playwright browser
         run: |
-          playwright install --with-deps chromium
+          sudo .venv/bin/playwright install-deps chromium
+          uv run playwright install chromium
 
       - name: Run integration tests with pytest
         run: |
