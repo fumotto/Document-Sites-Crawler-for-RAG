@@ -22,12 +22,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install uv
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+          python -m pip install --upgrade pip
+          python -m pip install uv
+
+      - name: Install Playwright browser
+        run: |
+          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt playwright install chromium
 
       - name: Run tests with pytest
         run: |
-          pytest tests/ -v
+          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/ -v

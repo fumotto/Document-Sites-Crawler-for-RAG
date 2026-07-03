@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  testserver:
+    build:
+      context: ../testserver
+    ports:
+      - "8080:8080"
+  crawler:
+    build:
+      context: ../../../
+      dockerfile: Dockerfile
+    env_file:
+      - ../../../.env
+      - .env.test
+    depends_on:
+      - testserver
+    volumes:
+      - ./.test-workspace/cache:/app/cache
+      - ./.test-workspace/output:/app/output
+      - ./.test-workspace/archives:/app/archives
+      - ./.test-workspace/logs:/app/logs
+    command: ["python", "-m", "src.app.cli.main"]

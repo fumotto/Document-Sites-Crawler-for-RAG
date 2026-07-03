@@ -38,9 +38,7 @@ docker compose run crawler https://example.com --log-level DEBUG
 ## テスト
 
 ```bash
-uvx pip install -r requirements.txt
-uvx pip install -r requirements-dev.txt
-uvx pytest tests/
+uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/
 ```
 
 ## ディレクトリ構成
