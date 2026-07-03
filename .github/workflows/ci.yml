@@ -31,6 +31,11 @@ jobs:
         run: |
           uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt playwright install chromium
 
-      - name: Run tests with pytest
+      - name: Run unit tests with pytest
         run: |
-          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/ -v
+          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/unit/ -v
+
+      - name: Run integration tests with pytest
+        run: |
+          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/integration/docker/ -q
+          uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/integration/e2e/ -q
