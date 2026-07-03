@@ -30,6 +30,7 @@ jobs:
 
       - name: Install dependancies
         run: |
+          uv venv -p ${{ matrix.python-version }}
           uv pip install -r requirements.txt -r requirements-dev.txt -v
 
       - name: Run unit tests with pytest
