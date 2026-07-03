@@ -3,7 +3,7 @@ services:
     build:
       context: ../testserver
     ports:
-      - "8080:8080"
+      - "${TESTSERVER_PORT:-8080}:8080"
   crawler:
     build:
       context: ../../../
