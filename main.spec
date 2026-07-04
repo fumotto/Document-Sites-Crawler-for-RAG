@@ -14,10 +14,15 @@ RISK-2対応:
       - trafilatura.extract() が正常にMarkdownを返すこと
 """
 from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import get_package_paths
 
 block_cipher = None
 
-datas = [("web", "web"),('justext/stoplists', 'justext/stoplists')]
+# site-packages 内のパスを指定
+justext_path = get_package_paths('justext')[1]
+stoplists_path = os.path.join(justext_path, 'stoplists')
+
+datas = [("web", "web"),(stoplists_path, 'justext/stoplists')]
 binaries = []
 hiddenimports = [
     # tiktoken: プラグイン登録が pkgutil.iter_modules ベースのため、
