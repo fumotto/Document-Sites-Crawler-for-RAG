@@ -1,2 +1,5 @@
 # Development dependencies
 pytest>=7.0,<9
+playwright>=1.40.0,<2
+pytest-playwright>=0.5.0,<1
+pytest-cov>=7.1.0

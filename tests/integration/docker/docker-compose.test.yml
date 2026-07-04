@@ -1,0 +1,19 @@
+services:
+  testserver:
+    build:
+      context: ../testserver
+    ports:
+      - "${TESTSERVER_PORT:-8080}:8080"
+  crawler:
+    build:
+      context: ../../../
+    env_file:
+      - .env.test
+    depends_on:
+      - testserver
+    volumes:
+      - ./.test-workspace/cache:/app/cache
+      - ./.test-workspace/output:/app/output
+      - ./.test-workspace/archives:/app/archives
+      - ./.test-workspace/logs:/app/logs
+    command: ["python", "-m", "src.app.cli.main"]

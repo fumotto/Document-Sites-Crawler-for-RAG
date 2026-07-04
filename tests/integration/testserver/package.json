@@ -1,0 +1,7 @@
+{
+  "name": "notebooklm-document-crawler-testserver",
+  "private": true,
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}

@@ -37,11 +37,20 @@ docker compose run crawler https://example.com --log-level DEBUG
 
 ## テスト
 
+### 単体テスト
 ```bash
-uvx pip install -r requirements.txt
-uvx pip install -r requirements-dev.txt
-uvx pytest tests/
+uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/unit/  --cov=src --cov-report=html
 ```
+
+### 統合テスト
+```bash
+uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/integration/docker/  --cov=src --cov-report=html
+uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/integration/e2e/  --cov=src --cov-report=html
+```
+
+### すべてのテスト
+```bash
+uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/  --cov=src --cov-report=html
 
 ## ディレクトリ構成
 

@@ -221,3 +221,6 @@ __marimo__/
 archives/*
 cache/*
 output/*
+logs/*
+.tests-workspace/
+tests/integration/docker/.test-workspace/
