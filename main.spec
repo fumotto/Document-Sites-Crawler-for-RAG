@@ -17,7 +17,7 @@ from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
 
-datas = [("web", "web")]
+datas = [("web", "web"),('justext/stoplists', 'justext/stoplists')]
 binaries = []
 hiddenimports = [
     # tiktoken: プラグイン登録が pkgutil.iter_modules ベースのため、
