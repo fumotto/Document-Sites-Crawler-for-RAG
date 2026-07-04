@@ -1,8 +1,3 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-
 import pytest
 
 from src.app.exceptions.errors import ConfigError
@@ -25,55 +20,67 @@ def _base_form(**overrides):
     return form
 
 
-# TestID: GCB-001
-# TestID: GUI-002
 def test_single_url_maps_to_url_field():
+    # TestID: GCB-001
     config = build_config_from_form(_base_form())
     assert config.url == "https://example.com"
     assert config.base_urls == []
 
 
-# TestID: GUI-003
-# TestID: GCB-002
 def test_multiple_urls_map_to_base_urls():
+    # TestID: GCB-002
     form = _base_form(urls_text="https://a.com\nhttps://b.com")
     config = build_config_from_form(form)
     assert config.url is None
     assert config.base_urls == ["https://a.com", "https://b.com"]
 
 
-# TestID: GUI-004
-# TestID: GCB-003
 def test_empty_urls_raises_config_error():
+    # TestID: GCB-003
     with pytest.raises(ConfigError):
         build_config_from_form(_base_form(urls_text="   \n  "))
 
 
-# TestID: GUI-005
-# TestID: GCB-004
 def test_invalid_url_scheme_raises_config_error():
+    # TestID: GCB-004
     with pytest.raises(ConfigError):
         build_config_from_form(_base_form(urls_text="ftp://example.com"))
 
 
-# TestID: GUI-006
-# TestID: GCB-005
 def test_invalid_mode_raises_config_error():
+    # TestID: GCB-005
     with pytest.raises(ConfigError):
         build_config_from_form(_base_form(mode="bogus"))
 
 
-# TestID: GUI-007
-# TestID: GCB-006
 def test_include_exclude_csv_parsing():
+    # TestID: GCB-006
     form = _base_form(include="/docs, /guides", exclude="/blog")
     config = build_config_from_form(form)
     assert config.include == ["/docs", "/guides"]
     assert config.exclude == ["/blog"]
 
 
-# TestID: GUI-008
-# TestID: GCB-007
 def test_manifest_override_always_none_for_gui():
+    # TestID: GCB-007
     config = build_config_from_form(_base_form())
     assert config.manifest_path_override is None
+
+
+def test_non_numeric_word_limit_raises_config_error():
+    # TestID: GCB-008
+    with pytest.raises(ConfigError):
+        build_config_from_form(_base_form(word_limit="abc"))
+
+
+def test_invalid_log_level_raises_config_error():
+    # TestID: GCB-009
+    with pytest.raises(ConfigError):
+        build_config_from_form(_base_form(log_level="TRACE"))
+
+
+def test_one_invalid_url_among_multiple_lines_raises_config_error():
+    # TestID: GCB-010
+    form = _base_form(urls_text="https://a.com\nftp://b.com")
+    with pytest.raises(ConfigError):
+        build_config_from_form(form)

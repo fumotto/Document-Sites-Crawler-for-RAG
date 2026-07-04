@@ -1,16 +1,12 @@
-import sys
 import time
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from unittest.mock import MagicMock, patch
 
 import httpx
 
-# TestID: DIR-001
+
 def test_issue5_tests_dir_not_created(tmp_path):
-    """Issue #5: ensure_project_directories() は tests/ を作成しない。"""
     from src.app.utils.directory_bootstrap import ensure_project_directories
 
     ensure_project_directories(tmp_path)
@@ -18,9 +14,8 @@ def test_issue5_tests_dir_not_created(tmp_path):
     assert created == {"cache", "output", "archives", "logs"}
     assert "tests" not in created
 
-# TestID: EW-004
+
 def test_issue4_log_level_applied_on_start(monkeypatch, tmp_path):
-    """Issue #4: 実行開始時にフォームのlog_levelがルートロガーへ反映される。"""
     import logging
 
     monkeypatch.setenv("HOME", str(tmp_path))
@@ -51,9 +46,9 @@ def test_issue4_log_level_applied_on_start(monkeypatch, tmp_path):
                 break
             time.sleep(0.1)
 
-# TestID: ISS6-001
+
 def test_issue6_implicit_include_from_path(tmp_path):
-    """Issue #6: INCLUDE未設定時、対象URLのパスが暗黙のスコープになる。"""
+    # TestID: ISS6-001
     from src.app.crawler.crawler_service import CrawlerService
     from src.app.models.config_record import ConfigRecord
     from src.app.repository.manifest_repository import ManifestRepository
@@ -105,9 +100,9 @@ def test_issue6_implicit_include_from_path(tmp_path):
     crawled_urls = {r.url for r in outcome.page_results}
     assert crawled_urls == {"https://supabase.com/docs/guides"}
 
-# TestID: ISS6-002
+
 def test_issue6_explicit_include_still_takes_priority(tmp_path):
-    """Issue #6: INCLUDEが明示指定されている場合はそちらを優先する（CLI互換性維持）。"""
+    # TestID: ISS6-002
     from src.app.crawler.crawler_service import CrawlerService
     from src.app.models.config_record import ConfigRecord
     from src.app.repository.manifest_repository import ManifestRepository
@@ -144,7 +139,6 @@ def test_issue6_explicit_include_still_takes_priority(tmp_path):
         resp.headers = {}
         return resp
 
-    # INCLUDEに明示的に "/blog" を指定 -> パスからの暗黙スコープ(/docs/guides)より優先されるはず
     config = ConfigRecord(
         url="https://supabase.com/docs/guides", base_urls=[], manifest_path_override=None,
         mode="incremental", word_limit=450000, request_delay=0, user_agent="test",
@@ -160,3 +154,26 @@ def test_issue6_explicit_include_still_takes_priority(tmp_path):
 
     crawled_urls = {r.url for r in outcome.page_results}
     assert crawled_urls == {"https://supabase.com/blog/x"}
+
+
+def test_issue6_domain_root_url_has_no_implicit_include(tmp_path):
+    # TestID: ISS6-003
+    from src.app.crawler.crawler_service import CrawlerService
+    from src.app.models.config_record import ConfigRecord
+    from src.app.repository.manifest_repository import ManifestRepository
+    from src.app.repository.page_metadata_repository import PageMetadataRepository
+    from src.app.repository.page_repository import PageRepository
+
+    config = ConfigRecord(
+        url="https://example.com", base_urls=[], manifest_path_override=None,
+        mode="incremental", word_limit=450000, request_delay=0, user_agent="test",
+        include=[], exclude=[], max_pages=1000, timeout_seconds=10,
+    )
+    manifest_repo = ManifestRepository(tmp_path / "manifest.json")
+    page_repo = PageRepository(tmp_path / "pages")
+    meta_repo = PageMetadataRepository(tmp_path / "metadata")
+
+    service = CrawlerService(manifest_repo, page_repo, meta_repo, config)
+    effective_include = service._resolve_effective_include("https://example.com")
+
+    assert effective_include == []

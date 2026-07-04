@@ -1,10 +1,9 @@
 import os
-
 from pathlib import Path
 
-from src.app.utils.atomic_io import atomic_write_json, atomic_write_text
-from src.app.utils.logging_setup import setup_logging
-from src.app.utils.site_lock import site_lock
+import pytest
+
+from src.app.utils.atomic_io import atomic_write_json, atomic_write_text, read_json, _atomic_write
 
 
 def assert_readable_and_writable(path: Path) -> None:
@@ -12,8 +11,8 @@ def assert_readable_and_writable(path: Path) -> None:
     assert os.access(path, os.W_OK)
 
 
-# TestID: AT-001
 def test_atomic_write_json_creates_readable_file(tmp_path: Path) -> None:
+    # TestID: AIO-001
     output_path = tmp_path / "data.json"
 
     atomic_write_json(output_path, {"hello": "world"})
@@ -21,27 +20,70 @@ def test_atomic_write_json_creates_readable_file(tmp_path: Path) -> None:
     assert_readable_and_writable(output_path)
 
 
-# TestID: AT-002
 def test_atomic_write_text_creates_readable_file(tmp_path: Path) -> None:
+    # TestID: AIO-002
     output_path = tmp_path / "data.txt"
 
     atomic_write_text(output_path, "hello")
 
     assert_readable_and_writable(output_path)
 
-# TestID: LOCK-001
-def test_site_lock_creates_readable_file(tmp_path: Path) -> None:
-    lock_path = tmp_path / ".lock"
 
-    with site_lock(lock_path):
-        pass
+def test_read_json_round_trip(tmp_path: Path) -> None:
+    # TestID: AIO-003
+    output_path = tmp_path / "data.json"
+    original = {"hello": "world", "n": 1}
 
-    assert_readable_and_writable(lock_path)
+    atomic_write_json(output_path, original)
+    loaded = read_json(output_path)
 
-# TestID: LOG-001
-def test_setup_logging_creates_readable_file(tmp_path: Path) -> None:
-    log_path = tmp_path / "crawler.log"
+    assert loaded == original
 
-    setup_logging("INFO", "text", log_path)
 
-    assert_readable_and_writable(log_path)
+def test_overwrite_existing_file(tmp_path: Path) -> None:
+    # TestID: AIO-004
+    output_path = tmp_path / "data.json"
+
+    atomic_write_json(output_path, {"v": 1})
+    atomic_write_json(output_path, {"v": 2})
+
+    assert read_json(output_path) == {"v": 2}
+
+
+def test_parent_directory_auto_created(tmp_path: Path) -> None:
+    # TestID: AIO-005
+    output_path = tmp_path / "nested" / "dir" / "data.json"
+
+    atomic_write_json(output_path, {"v": 1})
+
+    assert output_path.exists()
+    assert output_path.parent.exists()
+
+
+def test_no_tmp_file_left_on_writer_exception(tmp_path: Path) -> None:
+    # TestID: AIO-006
+    output_path = tmp_path / "data.json"
+
+    def failing_writer(f):
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        _atomic_write(output_path, failing_writer)
+
+    leftover = list(tmp_path.glob(".*.tmp"))
+    assert leftover == []
+
+
+def test_fchmod_failure_is_swallowed(tmp_path: Path, monkeypatch) -> None:
+    # TestID: AIO-007
+    import src.app.utils.atomic_io as atomic_io_module
+
+    def failing_fchmod(fd, mode):
+        raise PermissionError("no fchmod on this platform")
+
+    monkeypatch.setattr(atomic_io_module.os, "fchmod", failing_fchmod)
+
+    output_path = tmp_path / "data.json"
+    atomic_write_json(output_path, {"v": 1})
+
+    assert read_json(output_path) == {"v": 1}

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 from urllib.parse import urljoin
 
-import requests
+import httpx
 from lxml import etree
 
 MAX_SITEMAP_DEPTH = 5
