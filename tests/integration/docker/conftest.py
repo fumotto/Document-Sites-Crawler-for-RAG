@@ -10,10 +10,16 @@ TEST_WORKSPACE = TEST_ROOT / ".test-workspace"
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_test_workspace():
     if TEST_WORKSPACE.exists():
-        shutil.rmtree(TEST_WORKSPACE)
+        try:
+            shutil.rmtree(TEST_WORKSPACE)
+        except PermissionError:
+            pass
     yield
     if TEST_WORKSPACE.exists():
-        shutil.rmtree(TEST_WORKSPACE)
+        try:
+            shutil.rmtree(TEST_WORKSPACE)
+        except PermissionError:
+            pass
 
 
 @pytest.fixture(scope="session")

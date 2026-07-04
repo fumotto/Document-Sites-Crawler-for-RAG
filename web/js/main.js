@@ -19,6 +19,11 @@ function showScreen(id) {
   ["screen-input", "screen-running", "screen-completed", "screen-error"].forEach((screenId) => {
     document.getElementById(screenId).hidden = screenId !== id;
   });
+
+  const startButton = document.getElementById("btn-start");
+  if (startButton) {
+    startButton.disabled = id !== "screen-input";
+  }
 }
 
 function collectFormData() {
@@ -174,9 +179,12 @@ async function onStartClicked() {
     } else if (response.status === "already_running") {
       errorEl.textContent = "既に実行中です。";
       errorEl.hidden = false;
+      showScreen("screen-input");
     }
-  } finally {
-    startButton.disabled = false;
+  } catch (err) {
+    errorEl.textContent = "実行開始に失敗しました。";
+    errorEl.hidden = false;
+    showScreen("screen-input");
   }
 }
 
