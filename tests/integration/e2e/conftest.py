@@ -4,6 +4,9 @@ import socketserver
 import threading
 from pathlib import Path
 
+from dotenv import load_dotenv
+import os
+
 import pytest
 from playwright.sync_api import sync_playwright
 
@@ -14,14 +17,18 @@ STUB_PATH = Path(__file__).resolve().parent / 'fixtures' / 'pywebview-stub.js'
 
 @pytest.fixture(scope='session')
 def web_server():
+
+    load_dotenv(".env.test")
+    TESTSERVER_HOST = os.getenv("TESTSERVER_HOST", "120.0.0.1")
+    TESTSERVER_PORT = os.getenv("TESTSERVER_PORT", "8080")
+
     assert PAGE_PATH.exists(), f'Expected web page at {PAGE_PATH}'
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(ROOT))
-    server = socketserver.TCPServer(('127.0.0.1', 0), handler)
-    port = server.server_address[1]
+    server = socketserver.TCPServer((TESTSERVER_HOST, 0), handler)
 
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    yield f'http://127.0.0.1:{port}'
+    yield f"http://{TESTSERVER_HOST}:{TESTSERVER_PORT}"
     server.shutdown()
     server.server_close()
 

@@ -9,6 +9,13 @@ services:
       context: ../../../
     env_file:
       - .env.test
+    # env_file（.env.test）は改行を含む値（BASE_URLS の複数行指定等）の扱いが
+    # 不確実なため、`environment` でホスト側のプロセス環境変数を明示的に
+    # 渡せるようにする。Compose仕様上 `environment` は `env_file` より優先される。
+    # ホスト側で該当変数が未設定の場合は空文字列となり、.env.test 側の値が
+    # 実質的に有効なままになる（BASE_URLS="" は「未設定として扱う」既存仕様と一致）。
+    environment:
+      BASE_URLS: "${TEST_OVERRIDE_BASE_URLS}"
     depends_on:
       - testserver
     volumes:
