@@ -50,7 +50,7 @@ class RobotsParser:
                         sitemap_urls.append(urljoin(base_url, sitemap_url))
             else:
                 parser.parse([])
-        except httpx.RequestError, httpx.TimeoutException, httpx.ConnectError:
+        except (httpx.RequestError, httpx.TimeoutException, httpx.ConnectError):
             parser.parse([])
 
         return parser, sitemap_urls
