@@ -9,6 +9,13 @@ services:
       context: ../../../
     env_file:
       - .env.test
+    # env_file（.env.test）は改行を含む値（BASE_URLS の複数行指定等）の扱いが
+    # 不確実なため、`environment` でホスト側のプロセス環境変数を明示的に
+    # 渡せるようにする。Compose仕様上 `environment` は `env_file` より優先される。
+    # ホスト側で該当変数が未設定の場合は空文字列となり、.env.test 側の値が
+    # 実質的に有効なままになる（BASE_URLS="" は「未設定として扱う」既存仕様と一致）。
+    environment:
+      BASE_URLS: "${TEST_OVERRIDE_BASE_URLS}"
     depends_on:
       - testserver
     volumes:
@@ -16,4 +23,10 @@ services:
       - ./.test-workspace/output:/app/output
       - ./.test-workspace/archives:/app/archives
       - ./.test-workspace/logs:/app/logs
-    command: ["python", "-m", "src.app.cli.main"]
+    # command は指定しない。Dockerfile の ENTRYPOINT
+    # ["python", "-m", "src.app.cli.main"] を利用する。ここで command を
+    # 固定すると、`docker compose up`（ENTRYPOINTの後ろにcommandを追記する
+    # 仕様）実行時に "python -m src.app.cli.main python -m src.app.cli.main"
+    # という二重呼び出しになり、argparseがエラーになる（DC-002等で発覚）。
+    # `docker compose run --rm crawler <url>` は run に渡した引数が
+    # commandを置き換えるため、command未指定でも問題なく動作する。

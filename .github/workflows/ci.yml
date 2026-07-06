@@ -31,11 +31,11 @@ jobs:
       - name: Install dependancies
         run: |
           uv venv -p ${{ matrix.python-version }}
-          uv pip install -r requirements.txt -r requirements-dev.txt -v
+          uv pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run unit tests with pytest
         run: |
-          uv run pytest tests/unit/ -v
+          uv run pytest tests/unit/
 
       - name: Install Playwright browser
         run: |
@@ -44,8 +44,8 @@ jobs:
 
       - name: Run integration tests with pytest
         run: |
-          uv run pytest tests/integration/docker/ -v
+          uv run pytest tests/integration/docker/
 
       - name: Run integration tests with e2e
         run: |
-          uv run pytest tests/integration/e2e/ -v
+          uv run pytest tests/integration/e2e/
