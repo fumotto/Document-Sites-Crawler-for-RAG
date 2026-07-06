@@ -23,4 +23,10 @@ services:
       - ./.test-workspace/output:/app/output
       - ./.test-workspace/archives:/app/archives
       - ./.test-workspace/logs:/app/logs
-    command: ["python", "-m", "src.app.cli.main"]
+    # command は指定しない。Dockerfile の ENTRYPOINT
+    # ["python", "-m", "src.app.cli.main"] を利用する。ここで command を
+    # 固定すると、`docker compose up`（ENTRYPOINTの後ろにcommandを追記する
+    # 仕様）実行時に "python -m src.app.cli.main python -m src.app.cli.main"
+    # という二重呼び出しになり、argparseがエラーになる（DC-002等で発覚）。
+    # `docker compose run --rm crawler <url>` は run に渡した引数が
+    # commandを置き換えるため、command未指定でも問題なく動作する。

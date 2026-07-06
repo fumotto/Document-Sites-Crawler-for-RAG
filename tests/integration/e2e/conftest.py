@@ -19,12 +19,12 @@ STUB_PATH = Path(__file__).resolve().parent / 'fixtures' / 'pywebview-stub.js'
 def web_server():
 
     load_dotenv(".env.test")
-    TESTSERVER_HOST = os.getenv("TESTSERVER_HOST", "120.0.0.1")
+    TESTSERVER_HOST = os.getenv("TESTSERVER_HOST", "127.0.0.1")
     TESTSERVER_PORT = os.getenv("TESTSERVER_PORT", "8080")
 
     assert PAGE_PATH.exists(), f'Expected web page at {PAGE_PATH}'
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(ROOT))
-    server = socketserver.TCPServer((TESTSERVER_HOST, 0), handler)
+    server = socketserver.TCPServer((TESTSERVER_HOST, int(TESTSERVER_PORT)), handler)
 
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()

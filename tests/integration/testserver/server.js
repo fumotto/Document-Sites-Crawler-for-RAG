@@ -293,6 +293,6 @@ app.get('/fixtures/pages/:name', (req, res) => {
   res.send(fs.readFileSync(filePath, 'utf8'));
 });
 
-app.listen(Number(TESTSERVER_POST), () => {
+app.listen(8080, () => {
   console.log('testserver listening on ' + HOST);
 });

@@ -17,10 +17,19 @@ ENV_FILE = ROOT / ".env.test"
 
 # ホスト側からtestserverの管理エンドポイントへ到達するための公開ポート。
 # docker-compose.test.yml の `${TESTSERVER_PORT:-8080}:8080` に対応する。
+# ホストからは常にlocalhost経由でしか到達できないため、.env.test の値に
+# 依存せず固定する（.env.test の TESTSERVER_HOST は testserver コンテナ自身が
+# sitemap/robots.txt にURLを埋め込む用途であり、ホストの接続先とは異なる）。
 load_dotenv(ENV_FILE)
-TESTSERVER_HOST = os.environ.get("TESTSERVER_HOST", "localhost")
-TESTSERVER_PORT = os.environ.get("TESTSERVER_PORT", "8081")
-TESTSERVER_HOST_URL = f"http://{TESTSERVER_HOST}:{TESTSERVER_PORT}"
+TESTSERVER_PORT = os.environ.get("TESTSERVER_PORT", "8080")
+TESTSERVER_HOST_URL = f"http://localhost:{TESTSERVER_PORT}"
+
+# crawlerコンテナに渡すクロール対象URL。crawlerコンテナ内からはcompose内部の
+# DNS名 `testserver` でのみtestserverに到達できるため、ホスト用のURLとは別に
+# 用意する。testserver自身がsitemap/robots.txt/リンクに埋め込むURLも
+# 同じ `testserver` ホスト名基準（testserver/.env.test の TESTSERVER_HOST）で
+# 生成されているため、crawler側から見た値と一致する。
+CRAWLER_TARGET_URL = f"http://testserver:{TESTSERVER_PORT}"
 
 
 def _format_env_value(value: str) -> str:
@@ -67,6 +76,15 @@ def _run_compose(
         "COMPOSE_PROJECT_NAME": "docker-scenario-tests",
         "TESTSERVER_PORT": os.environ.get("TESTSERVER_PORT", "8080"),
     }
+
+    # マウント先をDocker任せで自動作成させるとroot所有になりうるため、
+    # ホスト側で先に作成しておく。crawlerコンテナ自体はrootで動作するため、
+    # 生成物はroot所有になる。テスト側での読み取りには影響しない
+    # （root権限で読める）が、次回pytest実行前のクリーンアップ（rmtree等）で
+    # PermissionErrorになりうるため、後片付け時にsudoが必要になる場合がある。
+    for subdir in ("cache", "output", "archives", "logs"):
+        (ROOT / ".test-workspace" / subdir).mkdir(parents=True, exist_ok=True)
+
     if extra_env:
         for key, value in extra_env.items():
             env[f"TEST_OVERRIDE_{key}"] = value
@@ -79,6 +97,28 @@ def _run_compose(
         env=env,
     )
     return result
+
+
+def _clean_workspace() -> None:
+    """.test-workspace 配下を完全にクリーンな状態にする。
+
+    crawlerコンテナ（root）が生成したファイル・ディレクトリは、ホスト側の
+    非rootユーザーからは削除権限が無い場合がある。shutil.rmtree(..., ignore_errors=True)
+    はこの失敗を握りつぶし、古いテストの残骸（別シナリオでのmanifest.json等）が
+    削除されないまま次のテストへ混入する原因になっていた。
+    ホスト側での削除を試みたあと、crawlerコンテナ自身（root）にも削除させることで
+    確実にクリーンな状態を保証する。
+    """
+    workspace = ROOT / ".test-workspace"
+    shutil.rmtree(workspace, ignore_errors=True)
+    if workspace.exists():
+        _run_compose(
+            "run", "--rm", "--no-deps", "--entrypoint", "sh", "crawler",
+            "-c", "rm -rf /app/cache/* /app/output/* /app/archives/* /app/logs/*",
+        )
+        shutil.rmtree(workspace, ignore_errors=True)
+    for subdir in ("cache", "output", "archives", "logs"):
+        (workspace / subdir).mkdir(parents=True, exist_ok=True)
 
 
 def _testserver_post(
@@ -132,7 +172,7 @@ def _testserver_scenario(scenario: str):
     finally:
         try:
             _testserver_post("/__reset__")
-        except urllib.error.URLError, ConnectionError, OSError:
+        except (urllib.error.URLError, ConnectionError, OSError):
             # up --exit-code-from 等でtestserverが巻き添えで既に停止している
             # 場合がある。後片付けの主目的はdownによるコンテナ・ネットワークの
             # 破棄であるため、reset呼び出し自体の失敗はテスト結果に影響させない。
@@ -155,7 +195,7 @@ def test_docker_compose_can_start_testserver():
 
 def test_dc_001_single_site_basic_startup_generates_output():
     # TestID: DC-001
-    shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+    _clean_workspace()
     result = _run_compose("run", "--rm", "crawler", "http://testserver:8080")
     assert result.returncode in {0, 2}, result.stdout + result.stderr
     output_dir = ROOT / ".test-workspace" / "output" / "testserver_8080"
@@ -170,10 +210,10 @@ def test_dc_002_base_urls_multi_site_processing():
     # 複数サイトとしてそれぞれ独立に output/{site} が生成されることを確認する。
     with _testserver_scenario("with-include-exclude"):
         base_urls = "\n".join([
-            f"{TESTSERVER_HOST_URL}/pages/docs/guides.html",
-            f"{TESTSERVER_HOST_URL}/pages/blog/post1.html",
+            f"{CRAWLER_TARGET_URL}/pages/docs/guides.html",
+            f"{CRAWLER_TARGET_URL}/pages/blog/post1.html",
         ])
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         result = _run_compose(
             "up",
             "--exit-code-from",
@@ -194,12 +234,12 @@ def test_dc_002_base_urls_multi_site_processing():
 def test_dc_007_log_level_override_changes_log_output():
     # TestID: DC-007
     with _testserver_scenario("happy-path"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         result = _run_compose(
             "run",
             "--rm",
             "crawler",
-            TESTSERVER_HOST_URL,
+            CRAWLER_TARGET_URL,
             "--log-level",
             "DEBUG",
         )
@@ -213,31 +253,35 @@ def test_dc_007_log_level_override_changes_log_output():
 def test_dc_003_cli_argument_takes_precedence_over_base_urls():
     # TestID: DC-003
     with _temporary_env_file({"BASE_URLS": "http://does-not-exist.invalid"}):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-        result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        _clean_workspace()
+        result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
 
 
 def test_dc_004_manifest_override_is_used_for_single_site_run():
     # TestID: DC-004
-    shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+    _clean_workspace()
     result = _run_compose(
         "run",
         "--rm",
         "crawler",
-        TESTSERVER_HOST_URL,
+        CRAWLER_TARGET_URL,
         "--manifest",
-        "./manifest-prod.json",
+        # 相対パスの基準はコンテナ内カレントディレクトリ(/app)。
+        # /app 直下（ボリューム未マウント）を指定すると、--rmでコンテナごと
+        # 消えホストから検証できなくなるため、マウント済みの /app/cache 配下
+        # を指定する。
+        "./cache/manifest-prod.json",
     )
     assert result.returncode in {0, 2}, result.stdout + result.stderr
     assert (
-        ROOT / ".test-workspace" / "cache" / TESTSERVER_HOST_URL / "manifest.json"
-    ).exists() or (ROOT / "manifest-prod.json").exists()
+        ROOT / ".test-workspace" / "cache" / "testserver_8080" / "manifest.json"
+    ).exists() or (ROOT / ".test-workspace" / "cache" / "manifest-prod.json").exists()
 
 
 def test_dc_005_manifest_with_multiple_sites_errors():
     # TestID: DC-005
-    with _temporary_env_file({"BASE_URLS": TESTSERVER_HOST_URL}):
+    with _temporary_env_file({"BASE_URLS": CRAWLER_TARGET_URL}):
         result = _run_compose("run", "--rm", "crawler", "--manifest", "./x.json")
     assert result.returncode != 0
     assert result.stdout + result.stderr
@@ -268,26 +312,26 @@ def test_dc_009_version_output_is_displayed():
 def test_dc_010_missing_required_environment_values_error():
     # TestID: DC-010
     with _temporary_env_file({"MAX_PAGES": "", "TIMEOUT_SECONDS": ""}):
-        result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode != 0
     assert "MAX_PAGES is required but not set" in result.stdout + result.stderr
 
 
 def test_dc_011_sitemap_crawl_generates_output_files():
     # TestID: DC-011
-    shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-    result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+    _clean_workspace()
+    result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
-    output_dir = ROOT / ".test-workspace" / "output" / TESTSERVER_HOST_URL
+    output_dir = ROOT / ".test-workspace" / "output" / "testserver_8080"
     assert (output_dir / "docs_001.md").exists() or (output_dir / "Index.md").exists()
 
 
 def test_dc_012_fallback_crawl_without_sitemap_generates_output():
     # TestID: DC-012
     with _testserver_scenario("no-sitemap-fallback"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         with _temporary_env_file({"MAX_PAGES": "5"}):
-            result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+            result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
     output_dir = ROOT / ".test-workspace" / "output" / "testserver_8080"
     assert (output_dir / "Index.md").exists()
@@ -299,13 +343,13 @@ def test_dc_012_fallback_crawl_without_sitemap_generates_output():
 def test_dc_014_word_limit_splits_combined_markdown_into_multiple_files():
     # TestID: DC-014
     with _testserver_scenario("large-site"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         # 各ページ本文は約6語。WORD_LIMIT=13とすることで2ページ分（12語）までは
         # 同一ファイルに収まり、3ページ目以降で新しい docs_XXX.md へ分割される
         # （単体ページ超過による単独ファイル化ではなく、累積超過による通常分割
         # を検証する）。
         with _temporary_env_file({"WORD_LIMIT": "13", "REQUEST_DELAY": "0"}):
-            result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+            result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
     output_dir = ROOT / ".test-workspace" / "output" / "testserver_8080"
     docs_files = sorted(output_dir.glob("docs_*.md"))
@@ -318,8 +362,8 @@ def test_dc_014_word_limit_splits_combined_markdown_into_multiple_files():
 def test_dc_015_duplicate_content_pages_excluded_from_build():
     # TestID: DC-015
     with _testserver_scenario("with-duplicates"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-        result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        _clean_workspace()
+        result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
     output_dir = ROOT / ".test-workspace" / "output" / "testserver_8080"
     chunk_manifest = json.loads(
@@ -327,15 +371,15 @@ def test_dc_015_duplicate_content_pages_excluded_from_build():
     )
     urls = {entry["url"] for entry in chunk_manifest}
     # 後から見つかったURL（dup-new）のみが結合対象として残る。
-    assert f"{TESTSERVER_HOST_URL}/pages/dup-new.html" in urls
-    assert f"{TESTSERVER_HOST_URL}/pages/dup-old.html" not in urls
+    assert f"{CRAWLER_TARGET_URL}/pages/dup-new.html" in urls
+    assert f"{CRAWLER_TARGET_URL}/pages/dup-old.html" not in urls
 
 
 def test_dc_016_robots_disallowed_page_is_skipped():
     # TestID: DC-016
     with _testserver_scenario("with-robots-deny"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-        result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        _clean_workspace()
+        result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
     pages_dir = ROOT / ".test-workspace" / "cache" / "testserver_8080" / "pages"
     # Disallow対象(blog-post1.html)の本文は書き込まれない一方、
@@ -352,9 +396,9 @@ def test_dc_016_robots_disallowed_page_is_skipped():
 def test_dc_017_include_exclude_restricts_crawl_targets():
     # TestID: DC-017
     with _testserver_scenario("with-include-exclude"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         with _temporary_env_file({"INCLUDE": "/pages/docs", "EXCLUDE": ""}):
-            result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+            result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
     output_dir = ROOT / ".test-workspace" / "output" / "testserver_8080"
     index_content = (output_dir / "Index.md").read_text(encoding="utf-8")
@@ -365,7 +409,7 @@ def test_dc_017_include_exclude_restricts_crawl_targets():
 def test_dc_018_implicit_include_from_path_when_include_unset():
     # TestID: DC-018 (Issue #6)
     with _testserver_scenario("with-include-exclude"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         with _temporary_env_file({"INCLUDE": ""}):
             result = _run_compose(
                 "run",
@@ -385,8 +429,8 @@ def test_dc_018_implicit_include_from_path_when_include_unset():
 
 def test_dc_013_archive_zip_is_created():
     # TestID: DC-013
-    shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-    result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+    _clean_workspace()
+    result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
     archive_dir = ROOT / ".test-workspace" / "archives" / "testserver_8080"
     assert archive_dir.exists()
@@ -396,8 +440,8 @@ def test_dc_013_archive_zip_is_created():
 def test_dc_019_second_run_without_changes_skips_refetch_via_etag():
     # TestID: DC-019
     with _testserver_scenario("happy-path"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-        first = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        _clean_workspace()
+        first = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert first.returncode in {0, 2}, first.stdout + first.stderr
 
         manifest_path = (
@@ -405,7 +449,7 @@ def test_dc_019_second_run_without_changes_skips_refetch_via_etag():
         )
         first_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
-        second = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        second = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert second.returncode in {0, 2}, second.stdout + second.stderr
 
         second_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -421,8 +465,8 @@ def test_dc_019_second_run_without_changes_skips_refetch_via_etag():
 def test_dc_020_only_changed_page_is_refetched_on_second_run():
     # TestID: DC-020
     with _testserver_scenario("happy-path"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-        first = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        _clean_workspace()
+        first = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert first.returncode in {0, 2}, first.stdout + first.stderr
 
         manifest_path = (
@@ -439,13 +483,13 @@ def test_dc_020_only_changed_page_is_refetched_on_second_run():
             },
         )
 
-        second = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        second = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert second.returncode in {0, 2}, second.stdout + second.stderr
 
         second_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
-    changed_url = f"{TESTSERVER_HOST_URL}/pages/docs-guides.html"
-    unchanged_url = f"{TESTSERVER_HOST_URL}/pages/blog-post1.html"
+    changed_url = f"{CRAWLER_TARGET_URL}/pages/docs-guides.html"
+    unchanged_url = f"{CRAWLER_TARGET_URL}/pages/blog-post1.html"
     assert (
         second_manifest["pages"][changed_url]["content_sha256"]
         != first_manifest["pages"][changed_url]["content_sha256"]
@@ -459,8 +503,8 @@ def test_dc_020_only_changed_page_is_refetched_on_second_run():
 def test_dc_021_mode_full_refetches_all_pages_unconditionally():
     # TestID: DC-021
     with _testserver_scenario("happy-path"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-        first = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        _clean_workspace()
+        first = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert first.returncode in {0, 2}, first.stdout + first.stderr
 
         manifest_path = (
@@ -469,7 +513,7 @@ def test_dc_021_mode_full_refetches_all_pages_unconditionally():
         first_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
         with _temporary_env_file({"MODE": "full"}):
-            second = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+            second = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert second.returncode in {0, 2}, second.stdout + second.stderr
 
         second_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -482,48 +526,48 @@ def test_dc_021_mode_full_refetches_all_pages_unconditionally():
 def test_dc_022_page_removed_from_sitemap_is_deleted_from_manifest():
     # TestID: DC-022
     with _testserver_scenario("happy-path"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-        first = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        _clean_workspace()
+        first = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert first.returncode in {0, 2}, first.stdout + first.stderr
 
         manifest_path = (
             ROOT / ".test-workspace" / "cache" / "testserver_8080" / "manifest.json"
         )
         first_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        assert f"{TESTSERVER_HOST_URL}/pages/blog-post1.html" in first_manifest["pages"]
+        assert f"{CRAWLER_TARGET_URL}/pages/blog-post1.html" in first_manifest["pages"]
 
         # sitemapから blog-post1.html を除外する。
         _testserver_post(
             "/__sitemap-filter__",
-            {"urls": [f"{TESTSERVER_HOST_URL}/pages/docs-guides.html"]},
+            {"urls": [f"{CRAWLER_TARGET_URL}/pages/docs-guides.html"]},
         )
 
-        second = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        second = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert second.returncode in {0, 2}, second.stdout + second.stderr
 
         second_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     assert (
-        f"{TESTSERVER_HOST_URL}/pages/blog-post1.html" not in second_manifest["pages"]
+        f"{CRAWLER_TARGET_URL}/pages/blog-post1.html" not in second_manifest["pages"]
     )
-    assert f"{TESTSERVER_HOST_URL}/pages/docs-guides.html" in second_manifest["pages"]
+    assert f"{CRAWLER_TARGET_URL}/pages/docs-guides.html" in second_manifest["pages"]
 
 
 def test_dc_023_404_page_is_retained_in_manifest_across_runs():
     # TestID: DC-023
     with _testserver_scenario("error-responses"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-        first = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        _clean_workspace()
+        first = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert first.returncode in {0, 2}, first.stdout + first.stderr
 
         manifest_path = (
             ROOT / ".test-workspace" / "cache" / "testserver_8080" / "manifest.json"
         )
         first_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        not_found_url = f"{TESTSERVER_HOST_URL}/pages/not-found.html"
+        not_found_url = f"{CRAWLER_TARGET_URL}/pages/not-found.html"
         assert first_manifest["pages"][not_found_url]["crawl_result"] == "NOT_FOUND"
 
-        second = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        second = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert second.returncode in {0, 2}, second.stdout + second.stderr
 
         second_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -535,7 +579,7 @@ def test_dc_023_404_page_is_retained_in_manifest_across_runs():
 def test_dc_033_invalid_mode_errors():
     # TestID: DC-033
     with _temporary_env_file({"MODE": "invalid"}):
-        result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode != 0
     assert "Invalid MODE" in result.stdout + result.stderr
 
@@ -543,7 +587,7 @@ def test_dc_033_invalid_mode_errors():
 def test_dc_034_invalid_max_pages_errors():
     # TestID: DC-034
     with _temporary_env_file({"MAX_PAGES": "abc"}):
-        result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode != 0
     assert "MAX_PAGES must be an integer" in result.stdout + result.stderr
 
@@ -551,7 +595,7 @@ def test_dc_034_invalid_max_pages_errors():
 def test_dc_035_invalid_log_format_errors():
     # TestID: DC-035
     with _temporary_env_file({"LOG_FORMAT": "xml"}):
-        result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode != 0
     assert "Invalid LOG_FORMAT" in result.stdout + result.stderr
 
@@ -561,14 +605,14 @@ def test_dc_025_testserver_down_results_in_exit_code_2():
     # testserverを起動しない状態でクロールを実行する。`depends_on` による
     # 自動起動を抑止するため `--no-deps` を指定する。
     _run_compose("down")
-    shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-    result = _run_compose("run", "--rm", "--no-deps", "crawler", TESTSERVER_HOST_URL)
+    _clean_workspace()
+    result = _run_compose("run", "--rm", "--no-deps", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode == 2, result.stdout + result.stderr
 
 
 def test_dc_026_unresolvable_domain_results_in_exit_code_2():
     # TestID: DC-026
-    shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+    _clean_workspace()
     result = _run_compose("run", "--rm", "crawler", "http://nonexistent.invalid")
     assert result.returncode == 2, result.stdout + result.stderr
 
@@ -576,7 +620,7 @@ def test_dc_026_unresolvable_domain_results_in_exit_code_2():
 def test_dc_027_concurrent_run_on_same_site_fails_with_lock_error():
     # TestID: DC-027
     with _testserver_scenario("happy-path"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         # 1つ目の実行がロック保持中にとどまるよう、testserver応答を遅延させる。
         _testserver_post("/__delay__", {"ms": 5000})
 
@@ -611,7 +655,7 @@ def test_dc_027_concurrent_run_on_same_site_fails_with_lock_error():
                     break
                 time.sleep(0.3)
 
-            second = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+            second = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         finally:
             first_output = first_proc.communicate(timeout=60)[0]
             _testserver_post("/__delay__", {"ms": 0})
@@ -625,10 +669,10 @@ def test_dc_028_partial_failure_among_multiple_sites_continues_others():
     # TestID: DC-028
     with _testserver_scenario("happy-path"):
         base_urls = "\n".join([
-            "http://testserver:8080",
+            CRAWLER_TARGET_URL,
             "http://does-not-exist.invalid",
         ])
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         result = _run_compose(
             "up",
             "--exit-code-from",
@@ -646,9 +690,9 @@ def test_dc_028_partial_failure_among_multiple_sites_continues_others():
 def test_dc_029_max_pages_reached_truncates_fallback_crawl_with_warning():
     # TestID: DC-029
     with _testserver_scenario("no-sitemap-fallback"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         with _temporary_env_file({"MAX_PAGES": "5", "REQUEST_DELAY": "0"}):
-            result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+            result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
     assert "MAX_PAGES" in (result.stdout + result.stderr)
     output_dir = ROOT / ".test-workspace" / "output" / "testserver_8080"
@@ -659,9 +703,9 @@ def test_dc_029_max_pages_reached_truncates_fallback_crawl_with_warning():
 def test_dc_030_sitemap_entry_count_exceeding_max_pages_still_processes_all():
     # TestID: DC-030
     with _testserver_scenario("large-site"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         with _temporary_env_file({"MAX_PAGES": "5", "REQUEST_DELAY": "0"}):
-            result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+            result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
     assert "MAX_PAGES" in (result.stdout + result.stderr)
     output_dir = ROOT / ".test-workspace" / "output" / "testserver_8080"
@@ -675,16 +719,22 @@ def test_dc_030_sitemap_entry_count_exceeding_max_pages_still_processes_all():
 def test_dc_031_corrupted_manifest_json_is_handled_gracefully():
     # TestID: DC-031
     with _testserver_scenario("happy-path"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-        first = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        _clean_workspace()
+        first = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
         assert first.returncode in {0, 2}, first.stdout + first.stderr
 
-        manifest_path = (
-            ROOT / ".test-workspace" / "cache" / "testserver_8080" / "manifest.json"
+        # 直前の crawler 実行はコンテナ内rootとしてこのファイル
+        # （.test-workspace/cache/testserver_8080/manifest.json）を作成しており、
+        # ホスト側（非root）からは親ディレクトリの権限次第で unlink/write_text すら
+        # 失敗しうる。ホスト側から直接操作せず、同じ権限（コンテナ内root）を持つ
+        # crawlerコンテナ自身にシェルコマンドとして書き換えさせる。
+        corrupt = _run_compose(
+            "run", "--rm", "--entrypoint", "sh", "crawler",
+            "-c", "echo '{not valid json' > /app/cache/testserver_8080/manifest.json",
         )
-        manifest_path.write_text("{not valid json", encoding="utf-8")
+        assert corrupt.returncode == 0, corrupt.stdout + corrupt.stderr
 
-        second = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        second = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
 
     # 破損したmanifestを読み込もうとして異常終了するか、正常に再構築されるかの
     # いずれかであっても、少なくともプロセス自体がクラッシュせず終了コードを返すこと。
@@ -694,8 +744,8 @@ def test_dc_031_corrupted_manifest_json_is_handled_gracefully():
 def test_dc_032_host_volume_mounts_receive_generated_artifacts():
     # TestID: DC-032
     with _testserver_scenario("happy-path"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
-        result = _run_compose("run", "--rm", "crawler", TESTSERVER_HOST_URL)
+        _clean_workspace()
+        result = _run_compose("run", "--rm", "crawler", CRAWLER_TARGET_URL)
     assert result.returncode in {0, 2}, result.stdout + result.stderr
 
     workspace = ROOT / ".test-workspace"
@@ -709,7 +759,7 @@ def test_dc_032_host_volume_mounts_receive_generated_artifacts():
 def test_dc_036_log_file_path_env_writes_to_custom_log_file():
     # TestID: DC-036
     with _testserver_scenario("happy-path"):
-        shutil.rmtree(ROOT / ".test-workspace", ignore_errors=True)
+        _clean_workspace()
         with _temporary_env_file({"LOG_FILE_PATH": "logs/test-crawler.log"}):
             result = _run_compose(
                 "run",
