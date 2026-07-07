@@ -95,10 +95,7 @@ def main() -> int:
         if not js_api._worker.is_running:  # noqa: SLF001 - GUI層内部での直接参照
             return True
         try:
-            result = window.evaluate_js(
-                "confirm('処理中です。終了すると現在のサイトの処理が中断されます。終了しますか？')"
-            )
-            return bool(result)
+            return window.evaluate_js("alert('処理中は閉じれません');")
         except Exception:
             logger.warning("Failed to show close-confirmation dialog; allowing close.", exc_info=True)
             return True

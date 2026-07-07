@@ -11,7 +11,7 @@ import sys
 from dataclasses import asdict
 from typing import Any, Dict
 
-from src.app.gui.explorer_handler import Explorer_handler
+from app.gui.explorer_handler import Explorer_handler
 from src.app.gui.execution_worker import ExecutionWorker
 from src.app.gui.log_buffer import InMemoryLogHandler
 from src.app.gui.settings_store import load_settings, save_settings
@@ -79,6 +79,9 @@ class JsApi:
         except Exception as exc:
             logger.warning("Failed to open log folder", exc_info=True)
             return {"status": "error", "message": str(exc)}
+
+    def open_output_directory(self):
+        self.explorer_handler.open_output_directory(None)
 
     # --- アプリバージョン情報 ---------------------------------------------
 

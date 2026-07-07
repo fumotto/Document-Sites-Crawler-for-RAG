@@ -1,6 +1,6 @@
 # Document-Sites-Crawler-for-RAG
 
-Webサイト上のドキュメントを収集・整形し、RAG（特にNotebookLM）へアップロードしやすいMarkdownファイル群を生成するツールです。
+Webサイト上のドキュメントを収集・整形し、RAG（特にNotebookLM）へアップロードしやすいMarkdownファイル群を生成するツールです。※SPA（single-page application）はクロール対象外です。
 
 設計書は `docs/` を参照してください（`02_基本設計書.md` が全体の統合版です）。
 
@@ -38,19 +38,23 @@ docker compose run crawler https://example.com --log-level DEBUG
 ## テスト
 
 ### 単体テスト
+
 ```bash
 uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/unit/  --cov=src --cov-report=html
 ```
 
 ### 統合テスト
+
 ```bash
 uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/integration/docker/  --cov=src --cov-report=html
 uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/integration/e2e/  --cov=src --cov-report=html
 ```
 
 ### すべてのテスト
+
 ```bash
 uvx --with-requirements requirements.txt --with-requirements requirements-dev.txt pytest tests/  --cov=src --cov-report=html
+```
 
 ## ディレクトリ構成
 
@@ -61,14 +65,6 @@ uvx --with-requirements requirements.txt --with-requirements requirements-dev.tx
 ## デスクトップアプリ版（Windows）
 
 詳細仕様は `docs/08_デスクトップアプリ化要件定義書.md` を参照してください。
-
-### ローカルでの起動（開発用）
-
-```bash
-uvx pip install -r requirements.txt
-uvx pip install -r requirements-desktop.txt
-uvx python src/app/gui/desktop_main.py
-```
 
 ### インストーラのビルド（Windows環境が必要）
 
@@ -87,4 +83,3 @@ choco install innosetup -y
 インストーラの添付までを行います。
 
 配布ページ：`docs/index.html`（GitHub Pages、`docs/`フォルダをPages公開元に設定してください）
-
