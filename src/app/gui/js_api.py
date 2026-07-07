@@ -8,10 +8,9 @@ from __future__ import annotations
 import logging
 import subprocess
 import sys
-from dataclasses import asdict
 from typing import Any, Dict
 
-from app.gui.explorer_handler import Explorer_handler
+from src.app.gui.explorer_handler import Explorer_handler
 from src.app.gui.execution_worker import ExecutionWorker
 from src.app.gui.log_buffer import InMemoryLogHandler
 from src.app.gui.settings_store import load_settings, save_settings
