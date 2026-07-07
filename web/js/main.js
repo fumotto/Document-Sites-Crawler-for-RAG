@@ -128,6 +128,7 @@ async function pollStatus() {
         document.getElementById("log-panel").textContent;
       renderResultSummary(status.result_summary);
       showScreen("screen-completed");
+      await open_explorer();
     } else if (status.state === "failed") {
       stopPolling();
       document.getElementById("error-message").textContent =
@@ -155,7 +156,9 @@ function validateForm(formData) {
   }
   return null;
 }
-
+function open_explorer() {
+    window.pywebview.api.open_output_directory();
+}
 async function onStartClicked() {
   const formData = collectFormData();
   const validationError = validateForm(formData);
