@@ -1,8 +1,10 @@
 # Document-Sites-Crawler-for-RAG
 
-Webサイト上のドキュメントを収集・整形し、RAG（特にNotebookLM）へアップロードしやすいMarkdownファイル群を生成するツールです。※SPA（single-page application）はクロール対象外です。
+Webサイト上のドキュメントを収集・整形し、RAG（特にNotebookLM）へアップロードしやすいMarkdownファイル群を生成するツールです。
+※SPA（single-page application）のサイトはクロール対象外です。
 
 設計書は `docs/` を参照してください（`02_基本設計書.md` が全体の統合版です）。
+軽く概要だけ知りたい場合は、`00_設計サマリーmd`を参照してください。
 
 ## セットアップ
 
@@ -64,7 +66,7 @@ uvx --with-requirements requirements.txt --with-requirements requirements-dev.tx
 
 ## デスクトップアプリ版（Windows）
 
-詳細仕様は `docs/08_デスクトップアプリ化要件定義書.md` を参照してください。
+詳細は `docs/08_デスクトップアプリ化要件定義書.md` を参照してください。
 
 ### インストーラのビルド（Windows環境が必要）
 
