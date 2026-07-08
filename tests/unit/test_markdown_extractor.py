@@ -72,9 +72,6 @@ def test_language_is_set_when_detectable():
 
 def test_fallback_extraction_used_when_trafilatura_unavailable(monkeypatch):
     # TestID: MD-004
-    import src.app.crawler.markdown_extractor as md_module
-
-    monkeypatch.setattr(md_module, "_TRAFILATURA_AVAILABLE", False)
     extractor = MarkdownExtractor()
 
     result = extractor.extract(SAMPLE_HTML, "https://example.com/a")

@@ -34,7 +34,7 @@ def site_lock(lock_path: Path) -> Iterator[None]:
     try:
         if _HAS_FCNTL:
             try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB) 
             except OSError as exc:
                 if exc.errno in (errno.EACCES, errno.EAGAIN):
                     raise LockAcquisitionError(
@@ -53,13 +53,7 @@ def site_lock(lock_path: Path) -> Iterator[None]:
         yield
     finally:
         if _HAS_FCNTL:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_UN)
-            except OSError:
-                pass
+            fcntl.flock(fd, fcntl.LOCK_UN)
         else:
-            try:
-                os.ftruncate(fd, 0)
-            except OSError:
-                pass
+            os.ftruncate(fd, 0)
         os.close(fd)

@@ -15,7 +15,7 @@ URL正規化ユーティリティ。
       誤って同一視しないようにする）
 """
 from __future__ import annotations
-
+import hashlib
 from urllib.parse import urlsplit, urlunsplit
 
 _DEFAULT_PORTS = {"http": 80, "https": 443}
@@ -56,6 +56,5 @@ def normalize_url(url: str) -> str:
 
 def compute_page_hash(normalized_url: str) -> str:
     """正規化後URLからpage_hash（SHA-256）を算出する（05_データ構造設計.md）。"""
-    import hashlib
 
     return hashlib.sha256(normalized_url.encode("utf-8")).hexdigest()

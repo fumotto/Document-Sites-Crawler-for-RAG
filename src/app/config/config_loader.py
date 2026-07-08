@@ -145,7 +145,7 @@ def load_config(argv: Optional[List[str]] = None, env: Optional[dict] = None) ->
         mode=mode,
         word_limit=word_limit,
         request_delay=request_delay,
-        user_agent=env.get("USER_AGENT", "NotebookLM-Crawler/1.0"),
+        user_agent=env.get("USER_AGENT", "Document-Sites-Crawler-for-RAG/1.0"),
         include=_split_csv(env.get("INCLUDE")),
         exclude=_split_csv(env.get("EXCLUDE")),
         max_pages=max_pages,
