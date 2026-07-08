@@ -200,18 +200,20 @@ class CrawlerService:
         """生HTMLから同一ドメイン内リンクを抽出する（要件12節: 抽出済みMarkdownにはリンクを
         含めない設計のため、リンク抽出はクロール時取得の生HTMLから行う）。"""
         links: List[str] = []
-        try:
-            soup = BeautifulSoup(html, "lxml")
-            for a_tag in soup.find_all("a", href=True):
-                href_value = a_tag.get("href")
-                if isinstance(href_value, (list, tuple)):
-                    href_value = href_value[0] if href_value else ""
-                href = str(href_value).strip()
-                if not href or href.startswith("#") or href.startswith("mailto:") or href.startswith("javascript:"):
-                    continue
-                links.append(urljoin(base_url, href))
-        except Exception:
-            pass
+        soup = BeautifulSoup(html, "lxml")
+        for a_tag in soup.find_all("a", href=True):
+            href_value = a_tag.get("href")
+            if isinstance(href_value, (list, tuple)):
+                href_value = href_value[0] if href_value else ""
+            href = str(href_value).strip()
+            if (
+                not href
+                or href.startswith("#")
+                or href.startswith("mailto:")
+                or href.startswith("javascript:")
+            ):
+                continue
+            links.append(urljoin(base_url, href))
         return links
 
     # --- 1ページのクロール処理（sitemap/フォールバック共通） -------------------

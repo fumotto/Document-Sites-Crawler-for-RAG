@@ -1,7 +1,7 @@
-import shutil
+import pytest
 from pathlib import Path
 
-import pytest
+from test_tools.testspace_utils import clean_test_workspace
 
 TEST_ROOT = Path(__file__).resolve().parent
 TEST_WORKSPACE = TEST_ROOT / ".test-workspace"
@@ -10,16 +10,10 @@ TEST_WORKSPACE = TEST_ROOT / ".test-workspace"
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_test_workspace():
     if TEST_WORKSPACE.exists():
-        try:
-            shutil.rmtree(TEST_WORKSPACE)
-        except PermissionError:
-            pass
+        clean_test_workspace()
     yield
     if TEST_WORKSPACE.exists():
-        try:
-            shutil.rmtree(TEST_WORKSPACE)
-        except PermissionError:
-            pass
+        clean_test_workspace()
 
 
 @pytest.fixture(scope="session")
